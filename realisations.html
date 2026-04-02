@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réalisations - Portfolio</title>
+    <style>
+        @font-face {
+            font-family: 'Avenir';
+            src: url('assets/font/Avenir/Avenir-Black.woff2') format('woff2'),
+                 url('assets/font/Avenir/Avenir-Black.woff') format('woff'),
+                 url('assets/font/Avenir/Avenir-Black.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        :root {
+            --background-color: #f3f3f3;
+            --text-color: #ffffff;
+            --container-bg: #ffffff;
+        }
+        body {
+            font-family: 'Avenir', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('assets/image/W11_red.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: repeat-y;
+            animation: fadeIn 1s ease-in-out;
+        }
+        
+        .scroll-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 5rem;
+            color: #fff;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            animation: blink 1s infinite;
+            z-index: 1000;
+        }
+
+        .logo {
+            margin-left: 20px;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+        }
+
+        header {
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.0);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.0);
+            z-index: 1000;
+        }
+
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        nav ul li {
+            margin: 0;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        nav ul li:not(:last-child)::after {
+            content: "|";
+            position: absolute;
+            right: -15px;
+            color: #fff;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: #fff;
+            font-weight: 600;
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+            border-radius: 5px;
+        }
+
+        nav ul li a:hover {
+            background-color: #f53e49;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            transform: translateY(-3px);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .footer {
+            position: fixed;
+            bottom: -1px;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0);
+            color: var(--text-color);
+            text-align: center;
+            padding: 10px 0;
+            font-size: 0.9rem;
+        }
+        .footer p {
+            margin-bottom: 0;
+            position: relative;
+            bottom: -20px;
+        }
+
+        #current-time-date {
+            display: flex;
+            flex-direction: column;
+            text-align: right;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            margin-left: auto;
+            margin-right: 10px;
+        }
+
+        #current-time {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        #current-date {
+            font-size: 12px;
+        }
+
+        .realisations {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .realisations img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+        }
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            margin-top: 10px;
+            position: relative;
+        }
+        .card-section {
+            width: 100%;
+            position: relative;
+            margin-top: 10px;
+        }
+        .card-section h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background-color: #f53e4a7e;
+            border: 2px solid #f53e49;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            flex: 1 1 calc(22% - 20px);
+            cursor: pointer;
+            text-align: center;
+            height: 80px;
+            width: 0px;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(255, 255, 255, 0.2);
+        }
+
+        .card h2 {
+            color: #ffffff;
+        }
+
+        .card p {
+            color: #ffffff;
+        }
+
+        .card img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #000000;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 70%;
+            max-width: 600px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.5s;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            background-color: #000000;
+        }
+
+        .modal-body {
+            padding: 20px 0;
+        }
+
+        .modal-footer {
+            text-align: right;
+        }
+
+        .modal-footer button {
+            background-color: #0078d7;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .modal-footer button:hover {
+            background-color: #005a9e;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .pdf-container {
+            margin-top: 20px;
+        }
+
+        .pdf-container iframe {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+        }
+
+        .pdf-description {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ffffff;
+        }
+        .download-links {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.download-links a {
+    display: block;
+    margin: 5px 0;
+    color: #fff;
+    text-decoration: none;
+    background-color: #834e81;
+    padding: 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.download-links a:hover {
+    background-color: #6a3d6f;
+}
+
+#not-mobile-friendly {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            place-content: center;
+            color: white;
+            height: 100vh;
+            width: 100vw;
+            z-index: 999;
+            backdrop-filter: blur(2em);
+            gap: 1em;
+        }
+
+        #not-mobile-friendly #titolo-errore {
+            font-size: 6vw;
+            text-decoration: underline;
+            text-underline-offset: 0.3em;
+            font-weight: bolder;
+        }
+        @media (max-width: 1418px) {
+            #not-mobile-friendly {
+                display: grid;
+            }
+        }
+
+        @media (max-height: 912px) {
+            #not-mobile-friendly {
+                display: grid;
+            }
+        }
+
+        #dettagli-errore {
+            font-size: 2.5vw;
+        }
+
+        /* Styles pour la section du gros titre */
+.hero-section {
+    text-align: center;
+    padding: 50px 20px;
+    
+    color: #ffffff;
+    position: relative;
+    top: 0px;
+}
+
+.hero-section h1 {
+    margin-bottom: 20px;
+    animation: fadeInUp 1s ease-in-out;
+    font-size: 65px;
+    text-align: center;
+    color: #ffffff;
+}
+
+.hero-section p {
+    font-size: 1.25rem;
+    margin-bottom: 30px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.accueil {
+    color: white;
+    font-weight: 600;
+    margin-left: 20px; /* Ajustez la marge selon vos besoins */
+    font-size: 1.2rem; /* Ajustez la taille de la police pour correspondre à la navigation */
+}
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="presentation.html" class="logo">
+            <img src="assets/image/w11-red.svg" alt="Logo Windows">
+            <span class="accueil">Accueil</span>
+        </a>
+        <nav>
+            <ul>
+                <li><a href="formation.html">Formation</a></li>
+                <li><a href="alternance.html">Parcours Professionnel</a></li>
+                <li><a href="realisations.html">Réalisations Professionnels</a></li>
+                <li><a href="tableau.html">Tableau de Synthèse</a></li>
+                <li><a href="contact.html">Me contacter</a></li>
+                <li><a href="windows-os.html">Windows 11 Project</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="hero-section">
+        <h1>Mes réalisations professionnelles</h1>
+        <p>Ici vous pourrez y découvrir mes différentes participations sur des projets professionnelles tout au long de ma formation et de mon apprentissage !</p>
+    </div>
+
+    <div class="card-section">
+        <h2>Projet au CFA</h2>
+        <div class="cards-container">
+            <!-- Cartes AP -->
+            <div class="card" onclick="openModal('Voici les différents fichiers de mes réalisations pour AP-STRIFE ', [
+                {src: 'assets/pdf/rea/strife/RP_STRIFE.pdf', description: 'Fiche de Réalisation Professionnelle AP STRIFE'},
+                {src: 'assets/pdf/rea/strife/Capture d_écran Notion.pdf', description: 'CAPTURE D\'ECRAN NOTION'},
+                {src: 'assets/pdf/rea/strife/Fiche recette - Grille synthétique de recette.pdf', description: 'Fiche recette - Grille synthétique de recette'},
+                {src: 'assets/pdf/rea/strife/Journal_de_bord_Kévin_JANLIN.pdf', description: 'Journal de bord Kévin JANLIN'},
+                {src: 'assets/pdf/rea/strife/Administration Général - Nextcloud.pdf', description: 'Administration Général - Nextcloud - Admin Nextcloud'},
+                {src: 'assets/pdf/rea/strife/Utilisateurs Nextcloud.pdf', description: 'Administration Général - Nextcloud - Utilisateurs Nextcloud'},
+                {src: 'assets/pdf/rea/strife/Nextcloud - Installation et configuration.pdf', description: 'Instalation et configuration de Nextcloud'},
+                {src: 'assets/pdf/rea/strife/nextcloud.m2l.asso.conf', description: 'Fichier de configuration Nextcloud'},
+                {src: 'assets/pdf/rea/strife/Compte rendu GLPI.pdf', description: 'Compte rendu GLPI'},
+                {src: 'assets/pdf/rea/strife/db.10', description: 'Fichier Inverse DNS'},
+                {src: 'assets/pdf/rea/strife/db.m2l.asso', description: 'Fichier DNS'},
+                {src: 'assets/pdf/rea/strife/named.conf.local', description: 'Configuration DNS'},
+                {src: 'assets/pdf/rea/strife/Installation - Configuration DNS.pdf', description: 'Instalation et configuration du DNS'},
+                {src: 'assets/pdf/rea/strife/TEST DNS.pdf', description: 'Test du DNS'}
+            ], [
+                {href: 'assets/pdf/rea/strife/AP-STRIFE.zip', text: 'Télécharger le dossier pour Windows'},
+                {href: 'assets/pdf/rea/strife/AP-STRIFE.zip', text: 'Télécharger le dossier pour Mac'},
+                {href: 'assets/pdf/rea/strife/AP-STRIFE.tar.gz', text: 'Télécharger le dossier pour Linux'}
+            ])">
+                <h2>AP STRIFE</h2>
+                <p>GLPI - Nextcloud</p>
+            </div>
+
+            <div class="card" onclick="openModal('Voici les différents fichiers de mes réalisations pour AP-NAVAJO', [
+                {src: 'assets/pdf/rea/navajo/RP_NAVAJO.pdf', description: 'Fiche de Réalisation Professionnelle'},
+                {src: 'assets/pdf/rea/navajo/Proxylab - AP NAVAJO.pdf', description: 'Proxylab - AP NAVAJO'}
+            ], [
+                {href: 'assets/pdf/rea/navajo/AP-NAVAJO.zip', text: 'Télécharger le dossier pour Windows'},
+                {href: 'assets/pdf/rea/navajo/AP-NAVAJO.zip', text: 'Télécharger le dossier pour Mac'},
+                {href: 'assets/pdf/rea/navajo/AP-NAVAJO.tar', text: 'Télécharger le dossier pour Linux'}
+            ])">
+                <h2>AP NAVAJO</h2>
+                <p>Reverse Proxy - Routage Inter-VLAN</p>
+            </div>
+
+            <div class="card" onclick="openModal('Voici les différents fichiers de mes réalisations pour AP-FORTINS', [
+                {src: 'assets/pdf/rea/fortins/RP_FORTINS.pdf', description: 'Fiche de Réalisation Professionnelle'}
+            ], [
+                {href: 'assets/pdf/rea/fortins/AP-FORTINS.zip', text: 'Télécharger le dossier pour Windows'},
+                {href: 'assets/pdf/rea/fortins/AP-FORTINS.zip', text: 'Télécharger le dossier pour Mac'},
+                {href: 'assets/pdf/rea/fortins/AP-FORTINS.tar', text: 'Télécharger le dossier pour Linux'}
+            ])">
+                <h2>AP FORTINS</h2>
+                <p>Pare-feu - Extranet - LDAP</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-section">
+        <h2>Projet en ENTREPRISE</h2>
+        <div class="cards-container">
+            <!-- Autres cartes -->
+            <div class="card" onclick="openModal('Voici les différents fichiers de mes réalisations pour FOG Project', [
+                {src: 'assets/pdf/rea/fog/RP_FOG.pdf', description: 'Description du PDF 7'},
+                {src: 'assets/pdf/rea/fog/Installation_Configuration_Fog.pdf', description: 'Installation et Configuration de FOG'},
+                {src: 'assets/pdf/rea/fog/Capture_Deploiement_Fog.pdf', description: 'Capture du Déploiement de FOG'}
+            ])">
+                <h2>FOG PROJECT</h2>
+                <p>Boot OS en PXE</p>
+            </div>
+
+            <div class="card" onclick="openModal('Voici les différents fichiers de mes réalisations pour Urbackup', [
+                {src: 'assets/pdf/rea/urbackup/RP_URBACKUP.pdf', description: 'Fiche de Réalisation Professionnelle'},
+                {src: 'assets/pdf/rea/urbackup/Client_Urbackup.pdf', description: 'Création Client Urbackup Windows - Linux'}
+            ])">
+                <h2>URBACKUP</h2>
+                <p>Sauvegarde des postes Utilisateurs</p>
+            </div>
+
+            <div class="card" onclick="openModal('Voici les différents fichiers de mes réalisations pour Rustdesk', [
+                {src: 'assets/pdf/rea/rustdesk/RP_RUSTDESK.pdf', description: 'Fiche de Réalisation Professionnelle'},
+                {src: 'assets/pdf/rea/rustdesk/INSTALLATION_CONFIGURATION_RUSTDESK.pdf', description: 'Installation et Configuration de Rustdesk'}
+            ])">
+                <h2>RUSTDESK</h2>
+                <p>Téléassistance auto-hébergé</p>
+            </div>
+
+            <div class="card" onclick="openModal('Description 7', [
+                {src: 'assets/pdf/rea/wifi/RP_WIFI.pdf', description: 'Fiche de Réalisation Professionnelle'},
+                {src: 'assets/pdf/rea/wifi/Audit_WIFI.pdf', description: 'Exemple d\'Audit WIFI'}
+            ])">
+                <h2>WIFI</h2>
+                <p>Déploiement Borne WIFI</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Détails</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="modalDescription">Description</p>
+                <div id="pdfContainer"></div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <section id="not-mobile-friendly">
+        <div id="titolo-errore">
+            Echelle Graphique non supporté
+        </div>
+        <div id="dettagli-errore">
+            <div>
+                <span>Ouvrir le PC en plein écran "<u><kbd>F11</kbd></u>"</span>,
+                <span>ou utiliser "<u><kbd>CTRL</kbd> <kbd>-</kbd></u>" pour dézoomer.</span>
+            </div>
+            <div id="width-errore">
+                <span id="width-spiegazione">width: small</span>
+                <span id="width-attuale">undefined.</span>
+            </div>
+            <div id="height-errore">
+                <span id="height-spiegazione">height: small</span>
+                <span id="height-attuale">undefined.</span>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>&copy; 2025 Kévin J - Tous droits réservés</p>
+        <div id="current-time-date">
+            <span id="current-time"></span>
+            <span id="current-date"></span>
+        </div>
+    </footer>
+
+    <script>
+        function updateTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+
+            document.getElementById('current-time').textContent = `${hours}:${minutes}`;
+            document.getElementById('current-date').textContent = `${day}/${month}/${year}`;
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        function openModal(description, pdfs, downloadLinks) {
+        console.log("Opening modal with description:", description);
+        console.log("PDFs:", pdfs);
+        document.getElementById('modalDescription').textContent = description;
+        const pdfContainer = document.getElementById('pdfContainer');
+        pdfContainer.innerHTML = '';
+
+        // Ajouter les PDFs
+        pdfs.forEach(pdf => {
+            const pdfDiv = document.createElement('div');
+            pdfDiv.classList.add('pdf-container');
+            pdfDiv.innerHTML = `
+                <iframe src="${pdf.src}" frameborder="0"></iframe>
+                <div class="pdf-description">${pdf.description}</div>
+            `;
+            pdfDiv.addEventListener('click', () => {
+                window.open(pdf.src, '_blank');
+            });
+            pdfContainer.appendChild(pdfDiv);
+        });
+
+        // Ajouter les liens de téléchargement
+        if (downloadLinks) {
+            const downloadDiv = document.createElement('div');
+            downloadDiv.classList.add('download-links');
+            downloadLinks.forEach(link => {
+                const a = document.createElement('a');
+                a.href = link.href;
+                a.download = '';
+                a.textContent = link.text;
+                downloadDiv.appendChild(a);
+            });
+            pdfContainer.appendChild(downloadDiv);
+        }
+
+        document.getElementById('myModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        console.log("Closing modal");
+        document.getElementById('myModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('myModal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+
+    document.getElementById('scrollButton').addEventListener('click', function() {
+            const button = this;
+            if (button.textContent === '↓') {
+                window.scrollTo({
+                    top: document.body.scrollHeight,
+                    behavior: 'smooth'
+                });
+                button.textContent = '↑';
+            } else {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+                button.textContent = '↓';
+            }
+        });
+
+
+        function DispositivoNonSupportato() {
+            let AttualeWidthContainer = document.getElementById("width-attuale");
+            let AttualeHeightContainer = document.getElementById("height-attuale");
+
+            let widthSpiegazione = document.getElementById("width-spiegazione");
+            let heightSpiegazione = document.getElementById("height-spiegazione");
+
+            checkSopporto();
+
+            window.addEventListener("resize", function () {
+                checkSopporto();
+            });
+
+            function checkSopporto() {
+                if (window.innerWidth < 1418) {
+                    widthSpiegazione.innerHTML =
+                        "ERREUR DE LARGEUR : Vous avez besoin de <b>1418px</b>" +
+                        "   " +
+                        "pour afficher cette page";
+                    AttualeWidthContainer.innerHTML = window.innerWidth + "px";
+                    widthSpiegazione.style.color = "rgb(255, 0, 47)";
+                } else {
+                    widthSpiegazione.innerHTML = "La bonne largeur d'écran !";
+                    AttualeWidthContainer.innerHTML = "";
+                    widthSpiegazione.style.color = "rgb(0, 255, 157)";
+                }
+
+                if (window.innerHeight < 912) {
+                    heightSpiegazione.innerHTML =
+                        "ERREUR DE HAUTEUR : Vous avez besoin de <b>912px</b>" +
+                        "   " +
+                        "pour afficher cette page";
+                    AttualeHeightContainer.innerHTML = window.innerHeight + "px";
+                    heightSpiegazione.style.color = "rgb(255, 0, 47)";
+                } else {
+                    heightSpiegazione.innerHTML = "La bonne hauteur d'écran !";
+                    AttualeHeightContainer.innerHTML = "";
+                    heightSpiegazione.style.color = "rgb(0, 255, 157)";
+                }
+            }
+        }
+
+        DispositivoNonSupportato();
+
+    </script>
+</body>
+</html>

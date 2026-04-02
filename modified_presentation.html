@@ -1,0 +1,111 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Présentation - Portfolio</title>
+    <style>
+        @font-face {
+            font-family: 'Avenir';
+            src: url('assets/font/Avenir/Avenir-Black.woff2') format('woff2'),
+                 url('assets/font/Avenir/Avenir-Black.woff') format('woff'),
+                 url('assets/font/Avenir/Avenir-Black.ttf') format('truetype');
+        }
+
+        body {
+            font-family: 'Avenir', sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .training-info {
+            margin-bottom: 20px;
+        }
+
+        .competency-card {
+            width: 200px;
+            height: 150px;
+            perspective: 1000px;
+            margin: 20px;
+        }
+
+        .competency-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .competency-card:hover .competency-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .competency-card-front, .competency-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+        }
+
+        .competency-card-front {
+            background-color: #bbb;
+        }
+
+        .competency-card-back {
+            background-color: #2c3e50;
+            color: white;
+            transform: rotateY(180deg);
+        }
+
+        .cv-section {
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="training-info">
+            <h2>Formation en cours</h2>
+            <p>Actuellement formé au GRETA CFA AQUITAINE et réalisation de mon apprentissage à Bordeaux Sciences Agro.</p>
+        </div>
+
+        <div class="competency-cards">
+            <div class="competency-card">
+                <div class="competency-card-inner">
+                    <div class="competency-card-front">
+                        <h3>Compétence 1</h3>
+                    </div>
+                    <div class="competency-card-back">
+                        <p>Description de la compétence 1.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="competency-card">
+                <div class="competency-card-inner">
+                    <div class="competency-card-front">
+                        <h3>Compétence 2</h3>
+                    </div>
+                    <div class="competency-card-back">
+                        <p>Description de la compétence 2.</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Add more competency cards as needed -->
+        </div>
+
+        <div class="cv-section">
+            <h2>Mon CV</h2>
+            <p>Vous pouvez consulter mon CV ci-dessous :</p>
+            <!-- Embed CV content here -->
+        </div>
+    </div>
+</body>
+</html>

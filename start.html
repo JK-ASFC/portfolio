@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration de l'appareil</title>
+    <style>
+        :root {
+            --background-color: #121212;
+            --text-color: #ffffff;
+            --container-bg: #000000;
+        }
+        body.light-mode {
+            --background-color: #000000;
+            --text-color: #000000;
+            --container-bg: white;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            overflow: hidden;
+            position: relative;
+            background-image: url('assets/image/0light.jpg');
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.5s ease-in-out;
+        }
+        body.dark-mode {
+            background-image: url('assets/image/1dark.jpg');
+        }
+        .container, #welcome-message {
+            background-color: rgba(58, 134, 255, 0.8);
+            transition: background-color 0.5s ease-in-out;
+            padding: 60px 50px;
+            border-radius: 15px;
+            box-shadow: 0 8px 24px rgba(156, 0, 0, 0.1);
+            width: 520px;
+            text-align: left;
+        }
+        body.dark-mode .container {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        .hidden {
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+        .icon {
+            font-size: 90px;
+            color: rgb(58, 134, 255);
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        p {
+            color: var(--text-color);
+            margin-bottom: 35px;
+            line-height: 1.6;
+        }
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 14px;
+            font-size: 18px;
+            margin-top: 15px;
+            margin-bottom: 30px;
+            border: 1px solid #bbb;
+            border-radius: 8px;
+            margin-left: -18px;
+        }
+        .btn {
+            background-color: #0078d4;
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .btn:disabled {
+            background-color: #bbb;
+            cursor: not-allowed;
+        }
+        .btn:hover:enabled {
+            background-color: #005a9e;
+        }
+        #profile-pic-preview {
+            display: none;
+            margin-top: 20px;
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+        }
+        #welcome-message {
+            display: none;
+            text-align: center;
+            transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
+        }
+        .toggle-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: transparent;
+            border: 2px solid var(--text-color);
+            color: var(--text-color);
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .toggle-button:hover {
+            background-color: var(--text-color);
+            color: var(--background-color);
+        }
+        .loading-icon {
+            display: none;
+            margin: 30px auto;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="form-container">
+        <div class="icon" id="profile-container">
+            <img src="assets/image/w11-logo.svg" alt="Windows 11 logo" id="profile-pic-preview">
+        </div>
+        <button class="toggle-button" id="toggle-theme">Mode Clair</button>
+        <h1>Bienvenue sur mon Portfolio ! </h1>
+        <p>Entrez votre prénom pour une meilleure expérience immersive !</p>
+        <label for="username">Entrez votre prénom ici 👇🏻</label>
+        <input type="text" id="username" maxlength="16" placeholder="Votre prénom" required>
+        
+        <label for="profile-pic">Ajoutez une photo de profil (optionnel)</label>
+        <input type="file" id="profile-pic" accept="image/*">
+        
+        <p><strong>Vous allez maintenant entrer dans mon portfolio ! </strong><br>
+        C'est un espace assez immersif alors baladez-vous et bonne visite !</p>
+        <button class="btn" id="next-btn" disabled>Suivant</button>
+    </div>
+
+    <div id="welcome-message">
+        <h1>Bienvenue <span id="user-name"></span> !</h1>
+        <p>Merci de vous être inscrit. Profitez de votre visite immersive !</p>
+        <div class="loading-icon" id="loading"></div>
+    </div>
+
+    <script>
+        const usernameInput = document.getElementById('username');
+        const nextButton = document.getElementById('next-btn');
+        const profilePicInput = document.getElementById('profile-pic');
+        const profilePreview = document.getElementById('profile-pic-preview');
+        const formContainer = document.getElementById('form-container');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const userNameSpan = document.getElementById('user-name');
+        const loadingIcon = document.getElementById('loading');
+        const toggleButton = document.getElementById('toggle-theme');
+        const body = document.body;
+    
+        usernameInput.addEventListener('input', function() {
+            nextButton.disabled = !usernameInput.value.trim();
+        });
+    
+        profilePicInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    profilePreview.src = e.target.result;
+                    profilePreview.style.display = 'block';
+                    localStorage.setItem('profilePic', e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    
+        nextButton.addEventListener('click', function() {
+            const userName = usernameInput.value.trim();
+            if (userName) {
+                userNameSpan.textContent = userName;
+                localStorage.setItem('userName', userName);
+                formContainer.classList.add('hidden');
+                setTimeout(() => {
+                    formContainer.style.display = 'none';
+                    welcomeMessage.style.display = 'block';
+                    loadingIcon.style.display = 'block';
+                    
+                    // Redirection après 7 secondes
+                    setTimeout(() => {
+                        window.location.href = 'presentation.html';
+                    }, 7000);
+                }, 600);
+            }
+        });
+    
+        toggleButton.addEventListener('click', function() {
+            body.classList.toggle('dark-mode');
+            toggleButton.textContent = body.classList.contains('dark-mode') ? 'Mode Clair' : 'Mode Sombre';
+        });
+    </script>
+</body>
+</html>
