@@ -119,6 +119,8 @@ window.I18N = {
     "demo.close": "Masquer ce message",
 
     "home.kicker": "Événements de la résidence",
+    "wa.join": "Rejoindre le groupe WhatsApp",
+    "wa.footer": "Groupe WhatsApp Team LEONE",
     "home.title": "Événements",
     "filter.aria": "Filtrer les événements",
     "filter.upcoming": "À venir",
@@ -415,6 +417,8 @@ window.I18N = {
     "demo.close": "Hide this message",
 
     "home.kicker": "Residence events",
+    "wa.join": "Join the WhatsApp group",
+    "wa.footer": "Team LEONE WhatsApp group",
     "home.title": "Events",
     "filter.aria": "Filter events",
     "filter.upcoming": "Upcoming",

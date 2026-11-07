@@ -112,6 +112,11 @@ code { font-family: var(--f-mono); font-size: .9em; background: rgba(20,18,58,.0
 .btn:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--ink); }
 .btn-primary { --bg: var(--orange); }
 .btn-dark { --bg: var(--ink); --fg: var(--cream); }
+.btn-wa { --bg: #25d366; --fg: var(--ink); margin-top: 22px; }
+.wa-ico { width: 1.25em; height: 1.25em; flex: none; }
+.footer-wa { margin: 14px 0 0; }
+.footer-wa a { display: inline-flex; align-items: center; gap: 8px; color: #25d366; font-weight: 700; text-decoration: none; }
+.footer-wa a:hover { text-decoration: underline; }
 .btn-sm { padding: 8px 13px; font-size: .85rem; box-shadow: 2px 2px 0 var(--ink); }
 .btn-danger { --bg: #ffd9d4; }
 .btn[disabled] { opacity: .5; pointer-events: none; }
