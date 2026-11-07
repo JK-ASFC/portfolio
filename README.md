@@ -39,9 +39,10 @@ Sans Supabase, le site tourne en **mode démo** : chaque navigateur a ses propre
 ## Propositions d'événements
 
 Onglet **Proposer** : les résidents envoient une idée (titre, détails, quand, ce qu'il faudrait,
-prénom facultatif). Les propositions ne sont visibles **que par les organisateurs** (Organiser →
-Propositions), qui peuvent les refuser, les supprimer ou cliquer sur **Créer l'événement** : l'éditeur
-s'ouvre pré-rempli. Limite : 3 propositions / 24 h par appareil, 10 / heure par connexion.
+prénom facultatif). À côté du formulaire, la liste **« Déjà proposé »** montre les idées en attente
+ou acceptées (titre, extrait, statut — jamais le prénom ni les besoins). Les organisateurs gèrent les
+propositions dans Organiser → Propositions : refuser (l'idée disparaît de la liste publique),
+supprimer, ou **Créer l'événement** (éditeur pré-rempli). Limite : 3 propositions / 24 h par appareil, 10 / heure par connexion.
 
 ## Pot commun
 
@@ -51,6 +52,19 @@ Le site **n'encaisse aucun argent** et ne stocke aucune donnée bancaire. Il :
 - affiche un **solde**, un **objectif** et des **comptes transparents** (entrées et dépenses saisies
   par les organisateurs, sans nom de donateur) ;
 - indique sur la page d'un événement ce qui a été **pris en charge par le pot**.
+
+Le lien par défaut est le Revolut de l'organisateur (`potUrl` dans `js/config.js`). La page précise
+que **les virements arrivent sur un compte personnel** et affiche l'engagement de l'organisateur à
+n'utiliser l'argent que pour les événements ; le visiteur doit cocher une case avant d'ouvrir le lien.
+
+### Tickets de caisse
+
+Chaque dépense peut recevoir la **photo de son ticket** (Organiser → Pot commun, à l'ajout ou après coup).
+Les tickets sont publiés dans la section « Tickets de caisse » du pot et sur la page de l'événement ;
+les dépenses sans ticket sont signalées « ticket manquant ».
+- Photos ré-encodées en JPEG avant l'envoi : **métadonnées supprimées** (position GPS, appareil…).
+- Stockage Supabase `receipts` : lecture publique, envoi/suppression réservés aux organisateurs,
+  3 Mo max, JPEG uniquement. Pense à masquer nom et numéro de carte avant de photographier.
 
 ## Confidentialité
 

@@ -351,6 +351,20 @@ begin
   return jsonb_build_object('id', rid);
 end;
 $$;
+-- Liste publique des idées déjà proposées (sans prénom ni besoins).
+-- Les propositions refusées ou supprimées par un organisateur disparaissent.
+create or replace function public.public_proposals()
+returns table (id uuid, title text, description text, status text, created_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.title, left(p.description, 200), p.status, p.created_at
+  from proposals p
+  where p.status in ('new', 'accepted')
+  order by (p.status = 'accepted') desc, p.created_at desc
+  limit 60;
+$$;
+revoke all on function public.public_proposals() from public;
+grant execute on function public.public_proposals() to anon, authenticated;
+
 revoke all on function public.submit_proposal(text, text, text, text, text, text, text) from public;
 grant execute on function public.submit_proposal(text, text, text, text, text, text, text) to anon, authenticated;
 
@@ -375,7 +389,7 @@ drop policy if exists "settings admin" on public.settings;
 create policy "settings read"  on public.settings for select using (true);
 create policy "settings admin" on public.settings for all using (public.is_admin()) with check (public.is_admin());
 insert into public.settings (key, data)
-values ('pot', '{"url": "", "goal": 0, "description": "", "description_en": ""}'::jsonb)
+values ('pot', '{"url": "https://revolut.me/kvin7qt5u", "goal": 0, "description": "", "description_en": ""}'::jsonb)
 on conflict (key) do nothing;
 
 create table if not exists public.pot_entries (
@@ -393,6 +407,37 @@ drop policy if exists "pot read"  on public.pot_entries;
 drop policy if exists "pot admin" on public.pot_entries;
 create policy "pot read"  on public.pot_entries for select using (true);
 create policy "pot admin" on public.pot_entries for all using (public.is_admin()) with check (public.is_admin());
+
+-- Lien de cagnotte par défaut (Revolut de l'organisateur), seulement s'il n'y en a pas déjà un
+update public.settings
+   set data = jsonb_set(data, '{url}', '"https://revolut.me/kvin7qt5u"')
+ where key = 'pot' and coalesce(data->>'url', '') = '';
+
+-- =============================================================
+-- TICKETS DE CAISSE (preuves d'achat)
+-- Photos stockées dans le bucket public "receipts" (Supabase Storage).
+-- Lecture publique (transparence), envoi / suppression : organisateurs.
+-- Le site ré-encode les photos en JPEG avant l'envoi (métadonnées GPS supprimées).
+-- =============================================================
+alter table public.pot_entries add column if not exists receipt_path text;
+alter table public.pot_entries drop constraint if exists pot_entries_receipt_path_check;
+alter table public.pot_entries add constraint pot_entries_receipt_path_check
+  check (receipt_path is null or receipt_path ~ '^[0-9]{4}/[0-9a-f-]{36}\.jpg$');
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('receipts', 'receipts', true, 3145728, array['image/jpeg'])
+on conflict (id) do update
+  set public = true, file_size_limit = 3145728, allowed_mime_types = array['image/jpeg'];
+
+drop policy if exists "receipts admin insert" on storage.objects;
+drop policy if exists "receipts admin update" on storage.objects;
+drop policy if exists "receipts admin delete" on storage.objects;
+create policy "receipts admin insert" on storage.objects for insert to authenticated
+  with check (bucket_id = 'receipts' and public.is_admin());
+create policy "receipts admin update" on storage.objects for update to authenticated
+  using (bucket_id = 'receipts' and public.is_admin());
+create policy "receipts admin delete" on storage.objects for delete to authenticated
+  using (bucket_id = 'receipts' and public.is_admin());
 
 -- -------------------------------------------------------------
 -- Exemple : match de l'Équipe de France, jeudi 12 novembre 2026

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <title>LEONE</title>
   <meta name="description" content="Événements de la résidence LEONE · LEONE residence events">
@@ -81,7 +81,7 @@
         <h1 data-i18n="prop.title"></h1>
         <p class="lead" data-i18n="prop.lead"></p>
       </div>
-      <div class="block narrow" id="proposeRoot"></div>
+      <div class="block" id="proposeRoot"></div>
     </section>
 
     <!-- ============ POT COMMUN ============ -->

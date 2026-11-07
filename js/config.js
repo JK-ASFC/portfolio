@@ -17,5 +17,9 @@ window.LEONE_CONFIG = {
 
   // Code de l'espace organisateur EN MODE DÉMO UNIQUEMENT.
   // Ignoré dès que Supabase est configuré (vrai compte obligatoire).
-  demoPin: "leone2026"
+  demoPin: "leone2026",
+
+  // Lien de paiement du pot commun utilisé par défaut
+  // (modifiable ensuite dans Organiser → Pot commun).
+  potUrl: "https://revolut.me/kvin7qt5u"
 };
