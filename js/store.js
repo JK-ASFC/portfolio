@@ -14,8 +14,8 @@
 (function () {
   const cfg = window.LEONE_CONFIG || {};
   const REMOTE = Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey);
-  const LS_EVENTS = "leone.events.v1";
-  const LS_RESP = "leone.responses.v1";
+  const LS_EVENTS = "leone.events.v2";
+  const LS_RESP = "leone.responses.v2";
 
   const uid = () =>
     (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -42,6 +42,14 @@
       {
         id: "match-france",
         title: "Match de l'Équipe de France",
+        title_en: "France national team match",
+        category_en: "Match",
+        location_en: "Common room · residence ground floor",
+        description_en:
+          "Les Bleus are playing on Thursday night and we're watching it all together on the big screen! " +
+          "Meet 30 minutes before kick-off (8:45 pm) to settle in. " +
+          "Jerseys, flags and blue-white-red face paint strongly encouraged. 🇫🇷\n\n" +
+          "How it works: everyone brings a little something from the list so nobody pays for everything.",
         emoji: "⚽",
         category: "Match",
         theme: "tricolore",
@@ -56,24 +64,26 @@
         capacity: 40,
         allowGuests: true,
         items: [
-          { id: "chips", emoji: "🥨", label: "Chips & biscuits apéro (paquet)", needed: 6 },
-          { id: "pizza", emoji: "🍕", label: "Pizzas", needed: 5 },
-          { id: "softs", emoji: "🥤", label: "Softs (bouteille 1,5 L)", needed: 6 },
-          { id: "bieres", emoji: "🍺", label: "Bières (pack)", needed: 4 },
-          { id: "dessert", emoji: "🍰", label: "Dessert / gâteau", needed: 2 },
-          { id: "gobelets", emoji: "🥤", label: "Gobelets, assiettes & serviettes", needed: 2 },
-          { id: "chaises", emoji: "🪑", label: "Chaise pliante", needed: 8 },
-          { id: "enceinte", emoji: "🔊", label: "Enceinte Bluetooth", needed: 1 },
-          { id: "multiprise", emoji: "🔌", label: "Multiprise / rallonge", needed: 2 },
-          { id: "deco", emoji: "🇫🇷", label: "Drapeaux & maquillage tricolore", needed: 3 }
+          { id: "chips", emoji: "🥨", label: "Chips & biscuits apéro (paquet)", label_en: "Chips & snacks (bag)", needed: 6 },
+          { id: "pizza", emoji: "🍕", label: "Pizzas", label_en: "Pizzas", needed: 5 },
+          { id: "softs", emoji: "🥤", label: "Softs (bouteille 1,5 L)", label_en: "Soft drinks (1.5 L bottle)", needed: 6 },
+          { id: "bieres", emoji: "🍺", label: "Bières (pack)", label_en: "Beer (pack)", needed: 4 },
+          { id: "dessert", emoji: "🍰", label: "Dessert / gâteau", label_en: "Dessert / cake", needed: 2 },
+          { id: "gobelets", emoji: "🥤", label: "Gobelets, assiettes & serviettes", label_en: "Cups, plates & napkins", needed: 2 },
+          { id: "chaises", emoji: "🪑", label: "Chaise pliante", label_en: "Folding chair", needed: 8 },
+          { id: "enceinte", emoji: "🔊", label: "Enceinte Bluetooth", label_en: "Bluetooth speaker", needed: 1 },
+          { id: "multiprise", emoji: "🔌", label: "Multiprise / rallonge", label_en: "Power strip / extension cord", needed: 2 },
+          { id: "deco", emoji: "🇫🇷", label: "Drapeaux & maquillage tricolore", label_en: "Flags & tricolour face paint", needed: 3 }
         ],
         questions: [
-          { id: "prono", label: "Ton pronostic (score final) ?", type: "text", options: [] },
+          { id: "prono", label: "Ton pronostic (score final) ?", label_en: "Your prediction (final score)?", type: "text", options: [] },
           {
             id: "place",
             label: "Tu préfères être…",
+            label_en: "You'd rather be…",
             type: "choice",
-            options: ["Devant, au plus près de l'écran", "Au fond, tranquille", "Peu importe"]
+            options: ["Devant, au plus près de l'écran", "Au fond, tranquille", "Peu importe"],
+            options_en: ["Up front, close to the screen", "At the back, chilling", "Don't mind"]
           }
         ],
         createdAt: new Date().toISOString()

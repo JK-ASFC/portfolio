@@ -4,11 +4,19 @@ Site statique (HTML/CSS/JS, sans build) qui répertorie les événements de la r
 Les résidents consultent les événements, répondent via un formulaire et indiquent ce qu'ils ramènent.
 Les organisateurs créent/modifient les événements depuis l'onglet **Organiser**.
 
+## Bilingue FR / EN
+
+- Bouton **FR | EN** dans l'en-tête ; la langue est détectée automatiquement (navigateur) puis mémorisée.
+- Toute l'interface est traduite (`js/i18n.js`).
+- Le contenu des événements a une **version anglaise optionnelle** dans l'éditeur (titre, catégorie,
+  lieu, description, objets à ramener, questions). Si un champ anglais est vide, le texte français s'affiche.
+
 ## Structure
 
 ```
 index.html        pages : Accueil, Événements, La Résidence, Comment ça marche, Organiser
 css/style.css     style rétro-futuriste + animations
+js/i18n.js        traductions FR / EN de l'interface
 js/config.js      configuration (Supabase, code organisateur)
 js/store.js       données (Supabase ou mode démo localStorage) + événement d'exemple
 js/app.js         routeur, rendu, formulaire de réponse, espace organisateur
