@@ -972,7 +972,7 @@
                   ${events.slice().sort(sortByStart).reverse().map((ev) => `<option value="${esc(ev.id)}">${esc(ev.emoji || "")} ${esc(loc(ev, "title"))}</option>`).join("")}
                 </select></div>
             </div>
-            <div class="field" id="receiptField" hidden>
+            <div class="field receipt-field" id="receiptField">
               <label for="pe_receipt">🧾 ${esc(t("apot.receipt"))}</label>
               <input type="file" id="pe_receipt" name="receipt" accept="image/*">
               <small>${esc(t("apot.receiptHint"))}</small>
@@ -1005,19 +1005,26 @@
       } catch (err) { console.error(err); toast(err.code === "INVALID" ? t("apot.badUrl") : errMsg(err)); }
     });
     const entryForm = $("#potEntryForm");
-    const syncKind = () => ($("#receiptField").hidden = entryForm.kind.value !== "out");
-    $$("input[name=kind]", entryForm).forEach((r) => r.addEventListener("change", syncKind));
+    // choisir une photo de ticket = c'est forcément une dépense
+    entryForm.receipt.addEventListener("change", () => {
+      if (entryForm.receipt.files[0] && entryForm.kind.value !== "out") {
+        $("#k_out").checked = true;
+        toast(t("apot.switchedOut"));
+      }
+    });
+    $("#k_in").addEventListener("change", () => { if (entryForm.receipt.files[0]) entryForm.receipt.value = ""; });
     entryForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const f = e.target;
       const cents = parseEuros(f.amount.value);
       if (cents <= 0 || !f.label.value.trim()) { toast(t("apot.invalid")); return; }
-      const file = f.kind.value === "out" && f.receipt.files[0] ? f.receipt.files[0] : null;
+      const file = f.receipt.files[0] || null;
+      if (file && f.kind.value !== "out") $("#k_out").checked = true;
       const btn = $("button[type=submit]", f);
       btn.disabled = true;
       if (file) toast(t("apot.uploading"));
       try {
-        await Store.addPotEntry({ kind: f.kind.value, cents, label: f.label.value, label_en: f.label_en.value, date: f.date.value, eventId: f.eventId.value }, file);
+        await Store.addPotEntry({ kind: file ? "out" : f.kind.value, cents, label: f.label.value, label_en: f.label_en.value, date: f.date.value, eventId: f.eventId.value }, file);
         toast(t("apot.added"));
         renderAdminPot();
       } catch (err) {
