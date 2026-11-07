@@ -294,6 +294,106 @@ grant execute on function public.my_response(text, text) to anon, authenticated;
 grant execute on function public.submit_response(text, text, text, boolean, text, int, jsonb, text, jsonb, text, text, boolean) to anon, authenticated;
 grant execute on function public.is_admin() to anon, authenticated;
 
+-- =============================================================
+-- PROPOSITIONS D'ÉVÉNEMENTS (envoyées par les résidents)
+-- Visibles uniquement par les organisateurs.
+-- =============================================================
+create table if not exists public.proposals (
+  id           uuid primary key default gen_random_uuid(),
+  title        text not null check (length(title) between 3 and 80),
+  description  text not null default '' check (length(description) <= 1000),
+  when_text    text not null default '' check (length(when_text) <= 80),
+  needs        text not null default '' check (length(needs) <= 300),
+  name         text not null default '' check (length(name) <= 40),
+  lang         text not null default 'fr' check (lang in ('fr', 'en')),
+  status       text not null default 'new' check (status in ('new', 'accepted', 'rejected')),
+  device_hash  text not null,
+  ip_hash      text,
+  created_at   timestamptz not null default now()
+);
+create index if not exists proposals_device_idx on public.proposals(device_hash, created_at);
+alter table public.proposals enable row level security;
+drop policy if exists "proposals admin" on public.proposals;
+create policy "proposals admin" on public.proposals for all using (public.is_admin()) with check (public.is_admin());
+revoke all on public.proposals from anon;
+
+-- Erreurs : INVALID, RATE_LIMIT
+create or replace function public.submit_proposal(
+  p_device text, p_title text, p_description text, p_when text, p_needs text, p_name text, p_lang text
+) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  dev_hash text;
+  ip text;
+  rid uuid;
+begin
+  if p_device is null or p_device !~ '^[0-9a-f]{32,128}$' then raise exception 'INVALID'; end if;
+  dev_hash := public.leone_hash(p_device);
+  p_title := trim(regexp_replace(coalesce(p_title, ''), '\s+', ' ', 'g'));
+  if length(p_title) not between 3 and 80 then raise exception 'INVALID'; end if;
+  -- 3 propositions / 24 h par appareil, 10 / heure par connexion
+  if (select count(*) from proposals where device_hash = dev_hash and created_at > now() - interval '24 hours') >= 3 then
+    raise exception 'RATE_LIMIT';
+  end if;
+  ip := public.leone_client_ip_hash();
+  if ip is not null and (select count(*) from proposals where ip_hash = ip and created_at > now() - interval '1 hour') >= 10 then
+    raise exception 'RATE_LIMIT';
+  end if;
+  insert into proposals (title, description, when_text, needs, name, lang, device_hash, ip_hash)
+  values (p_title,
+          left(trim(coalesce(p_description, '')), 1000),
+          left(trim(coalesce(p_when, '')), 80),
+          left(trim(coalesce(p_needs, '')), 300),
+          left(trim(coalesce(p_name, '')), 40),
+          case when p_lang = 'en' then 'en' else 'fr' end,
+          dev_hash, ip)
+  returning id into rid;
+  return jsonb_build_object('id', rid);
+end;
+$$;
+revoke all on function public.submit_proposal(text, text, text, text, text, text, text) from public;
+grant execute on function public.submit_proposal(text, text, text, text, text, text, text) to anon, authenticated;
+
+-- =============================================================
+-- POT COMMUN
+-- Le site n'encaisse rien lui-même : il renvoie vers la cagnotte
+-- (HelloAsso, Lydia…) et affiche une comptabilité transparente
+-- tenue par les organisateurs (entrées / dépenses, sans nom de donateur).
+-- =============================================================
+create table if not exists public.settings (
+  key         text primary key,
+  data        jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz not null default now(),
+  -- lien de cagnotte : vide ou https:// uniquement
+  constraint settings_pot_url check (
+    key <> 'pot' or coalesce(data->>'url', '') = '' or (data->>'url') ~ '^https://[^\s"<>]+$'
+  )
+);
+alter table public.settings enable row level security;
+drop policy if exists "settings read"  on public.settings;
+drop policy if exists "settings admin" on public.settings;
+create policy "settings read"  on public.settings for select using (true);
+create policy "settings admin" on public.settings for all using (public.is_admin()) with check (public.is_admin());
+insert into public.settings (key, data)
+values ('pot', '{"url": "", "goal": 0, "description": "", "description_en": ""}'::jsonb)
+on conflict (key) do nothing;
+
+create table if not exists public.pot_entries (
+  id            uuid primary key default gen_random_uuid(),
+  kind          text not null check (kind in ('in', 'out')),
+  amount_cents  int  not null check (amount_cents > 0 and amount_cents <= 10000000),
+  label         text not null check (length(label) between 1 and 120),
+  label_en      text not null default '' check (length(label_en) <= 120),
+  entry_date    date not null default current_date,
+  event_id      text references public.events(id) on delete set null,
+  created_at    timestamptz not null default now()
+);
+alter table public.pot_entries enable row level security;
+drop policy if exists "pot read"  on public.pot_entries;
+drop policy if exists "pot admin" on public.pot_entries;
+create policy "pot read"  on public.pot_entries for select using (true);
+create policy "pot admin" on public.pot_entries for all using (public.is_admin()) with check (public.is_admin());
+
 -- -------------------------------------------------------------
 -- Exemple : match de l'Équipe de France, jeudi 12 novembre 2026
 -- -------------------------------------------------------------

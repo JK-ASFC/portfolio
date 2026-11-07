@@ -160,7 +160,8 @@
       root.innerHTML = `<div class="page-head"><h1>${esc(t("ev.notFoundT"))}</h1><p class="lead">${esc(t("ev.notFoundP"))}</p><a class="btn btn-dark" href="#/">${esc(t("ev.back"))}</a></div>`;
       return;
     }
-    const [stats, mine] = await Promise.all([Store.stats(ev.id), Store.myResponse(ev.id)]);
+    const [stats, mine, pot] = await Promise.all([Store.stats(ev.id), Store.myResponse(ev.id), Store.getPot().catch(() => null)]);
+    const funded = pot ? pot.entries.filter((e) => e.kind === "out" && e.eventId === ev.id) : [];
     const st = stats[ev.id] || EMPTY_STATS;
     if (mine) answered.add(ev.id);
     const d = toDate(ev.start), end = toDate(ev.end);
@@ -213,6 +214,7 @@
       <div class="block event-layout">
         <div>
           ${items.length ? `<div class="panel reveal"><h2>${esc(t("ev.needs"))}</h2><div class="needs">${needsHTML}</div></div>` : ""}
+          ${funded.length ? `<div class="panel reveal"><h2>🪙 ${esc(t("pot.eventFunded"))}</h2>${ledgerHTML(funded, [], false)}<p class="ledger-total">${esc(money(funded.reduce((n, e) => n + e.cents, 0)))}</p><a class="link" href="#/pot">${esc(t("pot.see"))}</a></div>` : ""}
           <div class="panel reveal">
             <h2>${esc(t("ev.who"))} <span class="going-count">· ${esc(tp("responses", st.replies))}</span></h2>
             ${st.attendees.length ? `<ul class="people">${peopleHTML}</ul>` : `<p class="card-meta">${esc(t("ev.nobody"))}</p>`}
@@ -400,10 +402,13 @@
     if (sub === "new") return renderEditor(null);
     if (sub === "edit") return renderEditor(await Store.getEvent(id));
     if (sub === "responses") return renderResponses(id);
+    if (sub === "proposals") return renderAdminProposals();
+    if (sub === "pot") return renderAdminPot();
 
     const [events, stats] = await Promise.all([Store.listEvents(), Store.stats()]);
     const list = events.slice().sort(sortByStart).reverse();
     $("#adminRoot").innerHTML = `
+      ${await adminTabs("events")}
       <div class="admin-bar">
         <h2>${esc(t("adm.my"))}</h2>
         <div class="admin-actions">
@@ -485,7 +490,8 @@
 
   function renderEditor(ev) {
     const isNew = !ev;
-    ev = ev || { theme: "sunset", allowGuests: true, items: [], questions: [], emoji: "🎉" };
+    ev = ev || { theme: "sunset", allowGuests: true, items: [], questions: [], emoji: "🎉", ...(pendingDraft || {}) };
+    pendingDraft = null;
     $("#adminRoot").innerHTML = `
       <div class="admin-bar"><h2>${esc(t(isNew ? "ed.newT" : "ed.editT"))}</h2><a class="btn btn-sm" href="#/admin">${esc(t("ed.back"))}</a></div>
       <form class="form panel" id="evForm">
@@ -676,6 +682,239 @@
     };
   }
 
+  /* ---------------- Argent & comptes ---------------- */
+  const money = (cents) => new Intl.NumberFormat(locale(), { style: "currency", currency: "EUR" }).format((cents || 0) / 100);
+  const parseEuros = (v) => Math.round(parseFloat(String(v).replace(/\s/g, "").replace(",", ".")) * 100) || 0;
+  const fmtDate = (s) => (s ? new Date(`${s}T12:00:00`).toLocaleDateString(locale(), { day: "numeric", month: "short", year: "numeric" }) : "");
+  function potTotals(entries) {
+    const inn = entries.filter((e) => e.kind === "in").reduce((n, e) => n + e.cents, 0);
+    const out = entries.filter((e) => e.kind === "out").reduce((n, e) => n + e.cents, 0);
+    return { inn, out, balance: inn - out };
+  }
+  /** Liste des mouvements. withDelete : boutons de suppression (organisateurs). */
+  function ledgerHTML(entries, events, withDelete) {
+    return `<ul class="ledger">${entries.map((e) => {
+      const ev = e.eventId && events.find((x) => x.id === e.eventId);
+      return `<li class="ledger-row ${e.kind}">
+        <span class="ledger-sign" aria-hidden="true">${e.kind === "in" ? "+" : "−"}</span>
+        <div class="ledger-main">
+          <div class="ledger-label">${esc(loc(e, "label"))}</div>
+          <div class="ledger-sub">${esc(t(e.kind === "in" ? "pot.in" : "pot.out"))} · ${esc(fmtDate(e.date))}${ev ? ` · <a href="#/event/${encodeURIComponent(ev.id)}">${esc(t("pot.forEvent", { x: loc(ev, "title") }))}</a>` : ""}</div>
+        </div>
+        <span class="ledger-amount"><span class="sr-only">${esc(t(e.kind === "in" ? "pot.in" : "pot.out"))} </span>${esc(money(e.cents))}</span>
+        ${withDelete ? `<button class="icon-btn" data-delpot="${esc(e.id)}" aria-label="${esc(t("adm.del"))}">✕</button>` : ""}
+      </li>`;
+    }).join("")}</ul>`;
+  }
+  const safeHost = (url) => { try { const u = new URL(url); return u.protocol === "https:" ? u.hostname : ""; } catch (e) { return ""; } };
+
+  /* ---------------- Pot commun (public) ---------------- */
+  async function renderPot() {
+    const [{ settings, entries }, events] = await Promise.all([Store.getPot(), Store.listEvents()]);
+    const tot = potTotals(entries);
+    const host = settings.url ? safeHost(settings.url) : "";
+    const pct = settings.goal > 0 ? Math.min(100, (tot.inn / (settings.goal * 100)) * 100) : 0;
+    $("#potRoot").innerHTML = `
+      <div class="pot-layout">
+        <div class="pot-card reveal">
+          <span class="pot-coin" aria-hidden="true"></span>
+          <p class="pot-label">${esc(t("pot.balance"))}</p>
+          <p class="pot-balance">${esc(money(tot.balance))}</p>
+          ${settings.goal > 0 ? `<div class="pot-goal"><span class="bar"><i data-w="${pct}"></i></span><span>${esc(t("pot.collected", { x: money(tot.inn), y: money(settings.goal * 100) }))}</span></div>` : ""}
+          ${loc(settings, "description") ? `<p class="pot-desc">${esc(loc(settings, "description"))}</p>` : ""}
+          ${host ? `<a class="btn btn-primary" href="${esc(settings.url)}" target="_blank" rel="noopener noreferrer">${esc(t("pot.give"))} ↗</a>
+                    <p class="pot-via">🔒 ${esc(t("pot.via", { host }))}</p>`
+                 : `<p class="notice">${esc(t("pot.closed"))}</p>`}
+        </div>
+        <div class="panel reveal">
+          <h2>${esc(t("pot.ledger"))}</h2>
+          <p class="card-meta">${esc(t("pot.ledgerHint"))}</p>
+          ${entries.length ? ledgerHTML(entries, events, false) : `<p class="card-meta" style="margin-top:12px">${esc(t("pot.noEntries"))}</p>`}
+        </div>
+      </div>`;
+    requestAnimationFrame(() => setTimeout(() => $$("#potRoot .bar i").forEach((b) => (b.style.width = b.dataset.w + "%")), 150));
+  }
+
+  /* ---------------- Proposer (public) ---------------- */
+  function renderPropose() {
+    const root = $("#proposeRoot");
+    root.innerHTML = `
+      <form class="form panel" id="propForm" novalidate autocomplete="off">
+        <div class="field"><label for="p_title">${esc(t("prop.what"))}</label><input type="text" id="p_title" name="ptitle" maxlength="80" required placeholder="${esc(t("prop.whatPh"))}"></div>
+        <div class="field"><label for="p_desc">${esc(t("prop.desc"))}</label><textarea id="p_desc" name="pdesc" maxlength="1000" placeholder="${esc(t("prop.descPh"))}"></textarea></div>
+        <div class="row">
+          <div class="field"><label for="p_when">${esc(t("prop.when"))}</label><input type="text" id="p_when" name="pwhen" maxlength="80" placeholder="${esc(t("prop.whenPh"))}"></div>
+          <div class="field"><label for="p_name">${esc(t("prop.name"))}</label><input type="text" id="p_name" name="pname" maxlength="40" autocomplete="given-name"><small>🔒 ${esc(t("prop.nameHint"))}</small></div>
+        </div>
+        <div class="field"><label for="p_needs">${esc(t("prop.needs"))}</label><input type="text" id="p_needs" name="pneeds" maxlength="300" placeholder="${esc(t("prop.needsPh"))}"></div>
+        <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+        <div class="btn-row"><button class="btn btn-primary" type="submit">${esc(t("prop.send"))}</button></div>
+      </form>`;
+    const form = $("#propForm");
+    const shownAt = Date.now();
+    const thanks = () => {
+      root.innerHTML = `<div class="panel success"><span class="big">💡</span><h2>${esc(t("prop.thanksT"))}</h2><p>${esc(t("prop.thanksP"))}</p><button class="btn" id="propAgain">${esc(t("prop.another"))}</button></div>`;
+      $("#propAgain").onclick = renderPropose;
+    };
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (form.website.value) return thanks();
+      if (Date.now() - shownAt < 3000) { toast(t("form.tooFast")); return; }
+      const title = form.ptitle.value.replace(/\s+/g, " ").trim();
+      if (title.length < 3) { form.ptitle.focus(); toast(t("prop.needTitle")); return; }
+      const btn = $("button[type=submit]", form);
+      btn.disabled = true;
+      try {
+        await Store.submitProposal({
+          title, description: form.pdesc.value.trim(), whenText: form.pwhen.value.trim(),
+          needs: form.pneeds.value.trim(), name: form.pname.value.trim(), lang
+        });
+        thanks();
+      } catch (err) {
+        if (!err.code) console.error(err);
+        btn.disabled = false;
+        toast(errMsg(err));
+      }
+    });
+  }
+
+  /* ---------------- Organiser : onglets ---------------- */
+  let pendingDraft = null;
+  async function adminTabs(active) {
+    let n = 0;
+    try { n = (await Store.listProposals()).filter((p) => p.status === "new").length; } catch (e) { /* ignore */ }
+    const tab = (key, href, label) =>
+      `<a class="chip ${active === key ? "is-active" : ""}" href="${href}" ${active === key ? 'aria-current="page"' : ""}>${esc(label)}</a>`;
+    return `<nav class="admin-tabs" aria-label="${esc(t("nav.admin"))}">
+      ${tab("events", "#/admin", t("adm.tabEvents"))}
+      ${tab("proposals", "#/admin/proposals", t("adm.tabProposals") + (n ? ` (${n})` : ""))}
+      ${tab("pot", "#/admin/pot", t("adm.tabPot"))}
+    </nav>`;
+  }
+
+  async function renderAdminProposals() {
+    const list = await Store.listProposals();
+    const order = { new: 0, accepted: 1, rejected: 2 };
+    list.sort((a, b) => order[a.status] - order[b.status]);
+    $("#adminRoot").innerHTML = `
+      ${await adminTabs("proposals")}
+      <div class="admin-list">
+        ${list.length ? list.map((p) => `
+          <article class="proposal ${esc(p.status)}">
+            <div class="proposal-head">
+              <h3>${esc(p.title)}</h3>
+              <span class="tag tag-${esc(p.status)}">${esc(t(`ap.${p.status}`))}</span>
+            </div>
+            ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ""}
+            <p class="card-meta">
+              ${p.whenText ? `${esc(t("ap.when", { x: p.whenText }))}<br>` : ""}
+              ${p.needs ? `${esc(t("ap.needs", { x: p.needs }))}<br>` : ""}
+              ${esc(t("ap.by", { x: p.name || t("ap.anon") }))} · ${esc(new Date(p.createdAt).toLocaleDateString(locale()))}${p.lang === "en" ? " · EN" : ""}
+            </p>
+            <div class="admin-actions">
+              ${p.status !== "accepted" ? `<button class="btn btn-sm btn-primary" data-pcreate="${esc(p.id)}">${esc(t("ap.create"))}</button>` : ""}
+              ${p.status === "new" ? `<button class="btn btn-sm" data-pstatus="rejected" data-pid="${esc(p.id)}">${esc(t("ap.reject"))}</button>`
+                                   : `<button class="btn btn-sm" data-pstatus="new" data-pid="${esc(p.id)}">${esc(t("ap.reopen"))}</button>`}
+              <button class="btn btn-sm btn-danger" data-pdel="${esc(p.id)}">${esc(t("ap.del"))}</button>
+            </div>
+          </article>`).join("") : `<div class="empty">${esc(t("ap.none"))}</div>`}
+      </div>`;
+    $("#adminRoot").onclick = async (e) => {
+      const c = e.target.closest("[data-pcreate]"), st = e.target.closest("[data-pstatus]"), d = e.target.closest("[data-pdel]");
+      try {
+        if (c) {
+          const p = list.find((x) => x.id === c.dataset.pcreate);
+          await Store.setProposalStatus(p.id, "accepted");
+          const extra = [p.whenText && t("ap.when", { x: p.whenText }), p.needs && t("ap.needs", { x: p.needs })].filter(Boolean).join("\n");
+          const desc = [p.description, extra].filter(Boolean).join("\n\n");
+          pendingDraft = p.lang === "en" ? { title: p.title, title_en: p.title, description: desc, description_en: desc } : { title: p.title, description: desc };
+          location.hash = "#/admin/new";
+        }
+        if (st) { await Store.setProposalStatus(st.dataset.pid, st.dataset.pstatus); renderAdminProposals(); }
+        if (d && confirm(t("ap.delConfirm"))) { await Store.deleteProposal(d.dataset.pdel); renderAdminProposals(); }
+      } catch (err) { console.error(err); toast(errMsg(err)); }
+    };
+  }
+
+  async function renderAdminPot() {
+    const [{ settings, entries }, events] = await Promise.all([Store.getPot(), Store.listEvents()]);
+    const tot = potTotals(entries);
+    const today = new Date().toISOString().slice(0, 10);
+    $("#adminRoot").innerHTML = `
+      ${await adminTabs("pot")}
+      <div class="mini-stats">
+        <div><strong>${esc(money(tot.balance))}</strong><span>${esc(t("pot.balance"))}</span></div>
+        <div><strong>${esc(money(tot.inn))}</strong><span>${esc(t("pot.in"))}</span></div>
+        <div><strong>${esc(money(tot.out))}</strong><span>${esc(t("pot.out"))}</span></div>
+      </div>
+      <div class="event-layout">
+        <div>
+          <form class="form panel" id="potEntryForm" novalidate>
+            <h2>${esc(t("apot.add"))}</h2>
+            <div class="row">
+              <div class="field"><span class="label">${esc(t("apot.kind"))}</span>
+                <div class="seg seg-2">
+                  <input type="radio" name="kind" id="k_in" value="in" checked><label for="k_in">+ ${esc(t("pot.in"))}</label>
+                  <input type="radio" name="kind" id="k_out" value="out"><label for="k_out">− ${esc(t("pot.out"))}</label>
+                </div>
+              </div>
+              <div class="field"><label for="pe_amount">${esc(t("apot.amount"))}</label><input type="text" id="pe_amount" name="amount" inputmode="decimal" placeholder="25,00" required></div>
+            </div>
+            <div class="field"><label for="pe_label">${esc(t("apot.label"))}</label><input type="text" id="pe_label" name="label" maxlength="120" placeholder="${esc(t("apot.labelPh"))}" required></div>
+            <div class="field"><label for="pe_label_en">${esc(t("apot.labelEn"))}</label><input type="text" id="pe_label_en" name="label_en" maxlength="120"></div>
+            <div class="row">
+              <div class="field"><label for="pe_date">${esc(t("apot.date"))}</label><input type="date" id="pe_date" name="date" value="${today}"></div>
+              <div class="field"><label for="pe_event">${esc(t("apot.event"))}</label>
+                <select id="pe_event" name="eventId"><option value="">${esc(t("apot.noEvent"))}</option>
+                  ${events.slice().sort(sortByStart).reverse().map((ev) => `<option value="${esc(ev.id)}">${esc(ev.emoji || "")} ${esc(loc(ev, "title"))}</option>`).join("")}
+                </select></div>
+            </div>
+            <div class="btn-row"><button class="btn btn-primary" type="submit">${esc(t("apot.addBtn"))}</button></div>
+          </form>
+          <div class="panel">
+            <h2>${esc(t("pot.ledger"))}</h2>
+            ${entries.length ? ledgerHTML(entries, events, true) : `<p class="card-meta">${esc(t("pot.noEntries"))}</p>`}
+          </div>
+        </div>
+        <form class="form panel" id="potSettingsForm" novalidate>
+          <h2>${esc(t("apot.settings"))}</h2>
+          <div class="field"><label for="ps_url">${esc(t("apot.url"))}</label><input type="url" id="ps_url" name="url" value="${esc(settings.url)}" placeholder="https://www.helloasso.com/…"><small>${esc(t("apot.urlHint"))}</small></div>
+          <div class="field"><label for="ps_goal">${esc(t("apot.goal"))}</label><input type="number" id="ps_goal" name="goal" min="0" step="1" value="${settings.goal || ""}"></div>
+          <div class="field"><label for="ps_desc">${esc(t("apot.desc"))}</label><textarea id="ps_desc" name="description" maxlength="600">${esc(settings.description)}</textarea></div>
+          <div class="field"><label for="ps_desc_en">${esc(t("apot.descEn"))}</label><textarea id="ps_desc_en" name="description_en" maxlength="600">${esc(settings.description_en)}</textarea></div>
+          <div class="btn-row"><button class="btn btn-primary" type="submit">${esc(t("apot.save"))}</button><a class="btn" href="#/pot">${esc(t("adm.view"))}</a></div>
+        </form>
+      </div>`;
+
+    $("#potSettingsForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      const url = f.url.value.trim();
+      if (url && !safeHost(url)) { toast(t("apot.badUrl")); f.url.focus(); return; }
+      try {
+        await Store.savePotSettings({ url, goal: f.goal.value, description: f.description.value.trim(), description_en: f.description_en.value.trim() });
+        toast(t("apot.saved"));
+      } catch (err) { console.error(err); toast(err.code === "INVALID" ? t("apot.badUrl") : errMsg(err)); }
+    });
+    $("#potEntryForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target;
+      const cents = parseEuros(f.amount.value);
+      if (cents <= 0 || !f.label.value.trim()) { toast(t("apot.invalid")); return; }
+      try {
+        await Store.addPotEntry({ kind: f.kind.value, cents, label: f.label.value, label_en: f.label_en.value, date: f.date.value, eventId: f.eventId.value });
+        toast(t("apot.added"));
+        renderAdminPot();
+      } catch (err) { console.error(err); toast(err.code === "INVALID" ? t("apot.invalid") : errMsg(err)); }
+    });
+    $("#adminRoot").onclick = async (e) => {
+      const d = e.target.closest("[data-delpot]");
+      if (d && confirm(t("apot.delConfirm"))) {
+        try { await Store.deletePotEntry(d.dataset.delpot); renderAdminPot(); } catch (err) { console.error(err); toast(errMsg(err)); }
+      }
+    };
+  }
+
   /* ---------------- Routeur ---------------- */
   async function route(keepScroll) {
     const h = location.hash;
@@ -683,10 +922,14 @@
     let parts;
     try { parts = h.replace(/^#\/?/, "").split("/").map(decodeURIComponent); } catch (e) { parts = []; }
     const [name = "", sub, id] = parts;
-    const v = name === "event" ? "event" : name === "admin" ? "admin" : "home";
+    const v = ["event", "admin", "propose", "pot"].includes(name) ? name : "home";
 
     $$(".view").forEach((s) => (s.hidden = s.dataset.view !== v));
-    $("#navAdmin").classList.toggle("is-active", v === "admin");
+    $$("[data-nav]").forEach((a) => {
+      const on = a.dataset.nav === (v === "event" ? "home" : v);
+      a.classList.toggle("is-active", on);
+      if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
     if (keepScroll !== true) window.scrollTo(0, 0);
     if (v !== "home") clearInterval(countdownTimer);
 
@@ -694,6 +937,8 @@
       if (v === "home") await renderHome();
       if (v === "event") await renderEvent(sub);
       if (v === "admin") await renderAdmin(sub, id);
+      if (v === "propose") renderPropose();
+      if (v === "pot") await renderPot();
     } catch (err) {
       console.error(err);
       toast(errMsg(err));

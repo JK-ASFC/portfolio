@@ -13,6 +13,10 @@
   const LS_EVENTS = "leone.events.v3";
   const LS_RESP = "leone.responses.v3";
   const LS_DEVICE = "leone.device";
+  const LS_PROPOSALS = "leone.proposals.v1";
+  const LS_POT = "leone.pot.v1";
+  const LS_POT_ENTRIES = "leone.potEntries.v1";
+  const hashLocal = (s) => s.slice(0, 16); // mode démo : pas besoin d'empreinte réelle
   const SS_SESSION = "leone.session";
 
   const fail = (code) => Object.assign(new Error(code), { code });
@@ -364,10 +368,111 @@
       await sb(`responses?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ show_name: show }) }, true);
     },
 
+    /* ----- Propositions ----- */
+    async submitProposal(p) {
+      const title = String(p.title || "").replace(/\s+/g, " ").trim();
+      if (title.length < 3 || title.length > 80) throw fail("INVALID");
+      if (!REMOTE) {
+        const all = local.read(LS_PROPOSALS, []);
+        const dev = hashLocal(device());
+        const recent = all.filter((x) => x.device === dev && Date.now() - new Date(x.createdAt) < 864e5);
+        if (recent.length >= 3) throw fail("RATE_LIMIT");
+        all.unshift({
+          id: uid(), title, description: String(p.description || "").trim().slice(0, 1000),
+          whenText: String(p.whenText || "").trim().slice(0, 80), needs: String(p.needs || "").trim().slice(0, 300),
+          name: String(p.name || "").trim().slice(0, 40), lang: p.lang, status: "new", device: dev, createdAt: new Date().toISOString()
+        });
+        local.write(LS_PROPOSALS, all);
+        return true;
+      }
+      await rpc("submit_proposal", {
+        p_device: device(), p_title: title, p_description: p.description, p_when: p.whenText,
+        p_needs: p.needs, p_name: p.name, p_lang: p.lang
+      });
+      return true;
+    },
+
+    async listProposals() {
+      if (!REMOTE) return local.read(LS_PROPOSALS, []);
+      const rows = await sb("proposals?select=id,title,description,when_text,needs,name,lang,status,created_at&order=created_at.desc", {}, true);
+      return rows.map((r) => ({ id: r.id, title: r.title, description: r.description, whenText: r.when_text, needs: r.needs, name: r.name, lang: r.lang, status: r.status, createdAt: r.created_at }));
+    },
+
+    async setProposalStatus(id, status) {
+      if (!REMOTE) {
+        const all = local.read(LS_PROPOSALS, []);
+        const x = all.find((y) => y.id === id);
+        if (x) { x.status = status; local.write(LS_PROPOSALS, all); }
+        return;
+      }
+      await sb(`proposals?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ status }) }, true);
+    },
+
+    async deleteProposal(id) {
+      if (!REMOTE) { local.write(LS_PROPOSALS, local.read(LS_PROPOSALS, []).filter((x) => x.id !== id)); return; }
+      await sb(`proposals?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }, true);
+    },
+
+    /* ----- Pot commun ----- */
+    async getPot() {
+      const empty = { url: "", goal: 0, description: "", description_en: "" };
+      if (!REMOTE) {
+        const entries = local.read(LS_POT_ENTRIES, []).slice()
+          .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+        return { settings: { ...empty, ...local.read(LS_POT, {}) }, entries };
+      }
+      const [set, rows] = await Promise.all([
+        sb("settings?select=data&key=eq.pot"),
+        sb("pot_entries?select=*&order=entry_date.desc,created_at.desc")
+      ]);
+      return {
+        settings: { ...empty, ...((set[0] && set[0].data) || {}) },
+        entries: rows.map((r) => ({ id: r.id, kind: r.kind, cents: r.amount_cents, label: r.label, label_en: r.label_en, date: r.entry_date, eventId: r.event_id, createdAt: r.created_at }))
+      };
+    },
+
+    async savePotSettings(data) {
+      const url = String(data.url || "").trim();
+      if (url && !/^https:\/\/[^\s"<>]+$/.test(url)) throw fail("INVALID");
+      const clean = {
+        url, goal: Math.max(0, Math.round(Number(data.goal) || 0)),
+        description: String(data.description || "").slice(0, 600), description_en: String(data.description_en || "").slice(0, 600)
+      };
+      if (!REMOTE) { local.write(LS_POT, clean); return; }
+      await sb("settings?key=eq.pot", { method: "PATCH", body: JSON.stringify({ data: clean, updated_at: new Date().toISOString() }) }, true);
+    },
+
+    async addPotEntry(e) {
+      const row = {
+        kind: e.kind === "out" ? "out" : "in",
+        cents: Math.round(Number(e.cents) || 0),
+        label: String(e.label || "").trim().slice(0, 120),
+        label_en: String(e.label_en || "").trim().slice(0, 120),
+        date: e.date || new Date().toISOString().slice(0, 10),
+        eventId: e.eventId || null
+      };
+      if (row.cents <= 0 || row.cents > 10000000 || !row.label) throw fail("INVALID");
+      if (!REMOTE) {
+        const all = local.read(LS_POT_ENTRIES, []);
+        all.push({ ...row, id: uid(), createdAt: new Date().toISOString() });
+        local.write(LS_POT_ENTRIES, all);
+        return;
+      }
+      await sb("pot_entries", { method: "POST", body: JSON.stringify({
+        kind: row.kind, amount_cents: row.cents, label: row.label, label_en: row.label_en, entry_date: row.date, event_id: row.eventId
+      }) }, true);
+    },
+
+    async deletePotEntry(id) {
+      if (!REMOTE) { local.write(LS_POT_ENTRIES, local.read(LS_POT_ENTRIES, []).filter((x) => x.id !== id)); return; }
+      await sb(`pot_entries?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }, true);
+    },
+
     resetDemo() {
       if (REMOTE) return;
       local.write(LS_EVENTS, seedEvents());
       local.write(LS_RESP, []);
+      [LS_PROPOSALS, LS_POT, LS_POT_ENTRIES].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
     },
 
     uid
