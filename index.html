@@ -22,8 +22,13 @@
       <span class="logo-sun" aria-hidden="true"></span>
       <span class="logo-word">LEONE</span>
     </a>
+    <nav class="nav" id="nav" data-i18n-aria="nav.label">
+      <a href="#/" data-nav="home"><span class="nav-ico" aria-hidden="true">📅</span><span data-i18n="nav.events"></span></a>
+      <a href="#/propose" data-nav="propose"><span class="nav-ico" aria-hidden="true">💡</span><span data-i18n="nav.propose"></span></a>
+      <a href="#/pot" data-nav="pot"><span class="nav-ico" aria-hidden="true">🪙</span><span data-i18n="nav.pot"></span></a>
+      <a href="#/admin" data-nav="admin" class="nav-admin"><span class="nav-ico" aria-hidden="true">🔐</span><span data-i18n="nav.admin"></span></a>
+    </nav>
     <div class="top-actions">
-      <a href="#/admin" class="nav-admin" id="navAdmin" data-i18n="nav.admin"></a>
       <div class="lang" role="group" data-i18n-aria="lang.label">
         <button type="button" data-lang="fr" lang="fr" aria-label="Français">FR</button>
         <button type="button" data-lang="en" lang="en" aria-label="English">EN</button>
@@ -68,6 +73,23 @@
     <!-- ============ DÉTAIL ÉVÉNEMENT ============ -->
     <section class="view" data-view="event" hidden>
       <div id="eventDetail"></div>
+    </section>
+
+    <!-- ============ PROPOSER ============ -->
+    <section class="view" data-view="propose" hidden>
+      <div class="page-head">
+        <h1 data-i18n="prop.title"></h1>
+        <p class="lead" data-i18n="prop.lead"></p>
+      </div>
+      <div class="block narrow" id="proposeRoot"></div>
+    </section>
+
+    <!-- ============ POT COMMUN ============ -->
+    <section class="view" data-view="pot" hidden>
+      <div class="page-head">
+        <h1 data-i18n="pot.title"></h1>
+      </div>
+      <div class="block" id="potRoot"></div>
     </section>
 
     <!-- ============ ORGANISER ============ -->

@@ -36,6 +36,22 @@ Sans Supabase, le site tourne en **mode démo** : chaque navigateur a ses propre
    ```
 6. **Project Settings → API** : copier `Project URL` et la clé `anon public` dans `js/config.js`, puis commit.
 
+## Propositions d'événements
+
+Onglet **Proposer** : les résidents envoient une idée (titre, détails, quand, ce qu'il faudrait,
+prénom facultatif). Les propositions ne sont visibles **que par les organisateurs** (Organiser →
+Propositions), qui peuvent les refuser, les supprimer ou cliquer sur **Créer l'événement** : l'éditeur
+s'ouvre pré-rempli. Limite : 3 propositions / 24 h par appareil, 10 / heure par connexion.
+
+## Pot commun
+
+Le site **n'encaisse aucun argent** et ne stocke aucune donnée bancaire. Il :
+- renvoie vers une page de paiement externe (HelloAsso, Lydia, Leetchi…) réglée dans
+  Organiser → Pot commun (lien `https://` uniquement, vérifié aussi par la base) ;
+- affiche un **solde**, un **objectif** et des **comptes transparents** (entrées et dépenses saisies
+  par les organisateurs, sans nom de donateur) ;
+- indique sur la page d'un événement ce qui a été **pris en charge par le pot**.
+
 ## Confidentialité
 
 - Pas de compte pour répondre, **pas de numéro d'appartement**.
