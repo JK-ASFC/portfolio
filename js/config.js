@@ -21,5 +21,8 @@ window.LEONE_CONFIG = {
 
   // Lien de paiement du pot commun utilisé par défaut
   // (modifiable ensuite dans Organiser → Pot commun).
-  potUrl: "https://revolut.me/kvin7qt5u"
+  potUrl: "https://revolut.me/kvin7qt5u",
+
+  // Lien d'invitation du groupe WhatsApp de la résidence (vide = bouton masqué)
+  whatsappUrl: "https://chat.whatsapp.com/FB8d4RgmAab7Ih2u8mNoLA"
 };

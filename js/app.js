@@ -1112,6 +1112,12 @@
     };
   }
 
+  // Groupe WhatsApp : seuls les liens d'invitation officiels sont acceptés
+  const wa = String((window.LEONE_CONFIG || {}).whatsappUrl || "");
+  if (/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/.test(wa)) {
+    $$(".wa-link").forEach((a) => { a.href = wa; a.hidden = false; });
+  }
+
   applyStatic();
   window.addEventListener("hashchange", () => route());
   route();
