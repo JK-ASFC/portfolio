@@ -224,6 +224,7 @@
       </div>`;
 
     requestAnimationFrame(() => setTimeout(() => $$(".bar i", root).forEach((b) => (b.style.width = b.dataset.w + "%")), 150));
+    if (funded.length) bindReceipts(root, funded, [ev]);
 
     const panel = $("#rsvpPanel");
     if (past) {
@@ -398,6 +399,7 @@
 
   async function renderAdmin(sub, id) {
     $("#adminRoot").onclick = null;
+    $("#adminRoot").onchange = null;
     if (!(await Store.isAdmin())) return renderAdminLock();
     if (sub === "new") return renderEditor(null);
     if (sub === "edit") return renderEditor(await Store.getEvent(id));
@@ -691,22 +693,60 @@
     const out = entries.filter((e) => e.kind === "out").reduce((n, e) => n + e.cents, 0);
     return { inn, out, balance: inn - out };
   }
-  /** Liste des mouvements. withDelete : boutons de suppression (organisateurs). */
-  function ledgerHTML(entries, events, withDelete) {
+  /** Liste des mouvements. withAdmin : boutons de gestion (organisateurs). */
+  function ledgerHTML(entries, events, withAdmin) {
     return `<ul class="ledger">${entries.map((e) => {
       const ev = e.eventId && events.find((x) => x.id === e.eventId);
+      const receipt = e.receiptUrl
+        ? `<button type="button" class="receipt-btn" data-receipt="${esc(e.id)}">🧾 ${esc(t("pot.receipt"))}</button>`
+        : e.kind === "out" ? `<span class="no-receipt">${esc(t("pot.noReceipt"))}</span>` : "";
       return `<li class="ledger-row ${e.kind}">
         <span class="ledger-sign" aria-hidden="true">${e.kind === "in" ? "+" : "−"}</span>
         <div class="ledger-main">
           <div class="ledger-label">${esc(loc(e, "label"))}</div>
           <div class="ledger-sub">${esc(t(e.kind === "in" ? "pot.in" : "pot.out"))} · ${esc(fmtDate(e.date))}${ev ? ` · <a href="#/event/${encodeURIComponent(ev.id)}">${esc(t("pot.forEvent", { x: loc(ev, "title") }))}</a>` : ""}</div>
+          ${receipt ? `<div class="ledger-receipt">${receipt}</div>` : ""}
         </div>
         <span class="ledger-amount"><span class="sr-only">${esc(t(e.kind === "in" ? "pot.in" : "pot.out"))} </span>${esc(money(e.cents))}</span>
-        ${withDelete ? `<button class="icon-btn" data-delpot="${esc(e.id)}" aria-label="${esc(t("adm.del"))}">✕</button>` : ""}
+        ${withAdmin ? `<span class="ledger-admin">
+            ${e.kind === "out" ? `<label class="btn btn-sm file-btn">${esc(t(e.receiptUrl ? "apot.replaceReceipt" : "apot.addReceipt"))}<input type="file" accept="image/*" data-attach="${esc(e.id)}" hidden></label>` : ""}
+            <button class="icon-btn" data-delpot="${esc(e.id)}" aria-label="${esc(t("adm.del"))}">✕</button>
+          </span>` : ""}
       </li>`;
     }).join("")}</ul>`;
   }
   const safeHost = (url) => { try { const u = new URL(url); return u.protocol === "https:" ? u.hostname : ""; } catch (e) { return ""; } };
+
+  /* ---------------- Visionneuse de ticket ---------------- */
+  function openReceipt(entry, events) {
+    let dlg = $("#receiptDialog");
+    if (!dlg) {
+      dlg = document.createElement("dialog");
+      dlg.id = "receiptDialog";
+      dlg.className = "receipt-dialog";
+      document.body.appendChild(dlg);
+      dlg.addEventListener("click", (e) => { if (e.target === dlg || e.target.closest("[data-close]")) dlg.close(); });
+    }
+    const ev = entry.eventId && events.find((x) => x.id === entry.eventId);
+    dlg.innerHTML = `
+      <div class="receipt-box">
+        <button class="icon-btn receipt-close" data-close aria-label="${esc(t("pot.close"))}">✕</button>
+        <img src="${esc(entry.receiptUrl)}" alt="${esc(t("pot.receiptOf", { x: loc(entry, "label") }))}">
+        <p><strong>${esc(loc(entry, "label"))}</strong> · ${esc(money(entry.cents))} · ${esc(fmtDate(entry.date))}${ev ? ` · ${esc(loc(ev, "title"))}` : ""}</p>
+        <a class="link" href="${esc(entry.receiptUrl)}" target="_blank" rel="noopener noreferrer">${esc(t("pot.openFull"))} ↗</a>
+      </div>`;
+    if (!dlg.open) dlg.showModal();
+  }
+  function bindReceipts(root, entries, events) {
+    if (root._receiptHandler) root.removeEventListener("click", root._receiptHandler);
+    root._receiptHandler = (e) => {
+      const b = e.target.closest("[data-receipt]");
+      if (!b) return;
+      const entry = entries.find((x) => x.id === b.dataset.receipt);
+      if (entry && entry.receiptUrl) openReceipt(entry, events);
+    };
+    root.addEventListener("click", root._receiptHandler);
+  }
 
   /* ---------------- Pot commun (public) ---------------- */
   async function renderPot() {
@@ -714,30 +754,92 @@
     const tot = potTotals(entries);
     const host = settings.url ? safeHost(settings.url) : "";
     const pct = settings.goal > 0 ? Math.min(100, (tot.inn / (settings.goal * 100)) * 100) : 0;
-    $("#potRoot").innerHTML = `
+    const receipts = entries.filter((e) => e.kind === "out" && e.receiptUrl);
+    const outs = entries.filter((e) => e.kind === "out");
+    const root = $("#potRoot");
+    root.innerHTML = `
       <div class="pot-layout">
-        <div class="pot-card reveal">
-          <span class="pot-coin" aria-hidden="true"></span>
-          <p class="pot-label">${esc(t("pot.balance"))}</p>
-          <p class="pot-balance">${esc(money(tot.balance))}</p>
-          ${settings.goal > 0 ? `<div class="pot-goal"><span class="bar"><i data-w="${pct}"></i></span><span>${esc(t("pot.collected", { x: money(tot.inn), y: money(settings.goal * 100) }))}</span></div>` : ""}
-          ${loc(settings, "description") ? `<p class="pot-desc">${esc(loc(settings, "description"))}</p>` : ""}
-          ${host ? `<a class="btn btn-primary" href="${esc(settings.url)}" target="_blank" rel="noopener noreferrer">${esc(t("pot.give"))} ↗</a>
-                    <p class="pot-via">🔒 ${esc(t("pot.via", { host }))}</p>`
-                 : `<p class="notice">${esc(t("pot.closed"))}</p>`}
+        <div>
+          <div class="pot-card reveal">
+            <span class="pot-coin" aria-hidden="true"></span>
+            <p class="pot-label">${esc(t("pot.balance"))}</p>
+            <p class="pot-balance">${esc(money(tot.balance))}</p>
+            ${settings.goal > 0 ? `<div class="pot-goal"><span class="bar"><i data-w="${pct}"></i></span><span>${esc(t("pot.collected", { x: money(tot.inn), y: money(settings.goal * 100) }))}</span></div>` : ""}
+            ${loc(settings, "description") ? `<p class="pot-desc">${esc(loc(settings, "description"))}</p>` : ""}
+            ${host ? `
+              <div class="pot-pledge">
+                <p class="pot-pledge-title">⚠️ ${esc(t("pot.personalT"))}</p>
+                <p>${esc(t("pot.personalP"))}</p>
+                <p class="pot-pledge-title">🤝 ${esc(t("pot.pledgeT"))}</p>
+                <p>${esc(t("pot.pledgeP"))}</p>
+              </div>
+              <label class="check pot-ack"><input type="checkbox" id="potAck"><span>${esc(t("pot.ack"))}</span></label>
+              <a class="btn btn-primary is-locked" id="potGive" href="${esc(settings.url)}" target="_blank" rel="noopener noreferrer" aria-disabled="true">${esc(t("pot.give"))} ↗</a>
+              <p class="pot-via">🔒 ${esc(t("pot.via", { host }))}</p>`
+            : `<p class="notice">${esc(t("pot.closed"))}</p>`}
+          </div>
         </div>
-        <div class="panel reveal">
-          <h2>${esc(t("pot.ledger"))}</h2>
-          <p class="card-meta">${esc(t("pot.ledgerHint"))}</p>
-          ${entries.length ? ledgerHTML(entries, events, false) : `<p class="card-meta" style="margin-top:12px">${esc(t("pot.noEntries"))}</p>`}
+        <div>
+          <div class="panel reveal">
+            <h2>${esc(t("pot.ledger"))}</h2>
+            <p class="card-meta">${esc(t("pot.ledgerHint"))}</p>
+            ${entries.length ? ledgerHTML(entries, events, false) : `<p class="card-meta" style="margin-top:12px">${esc(t("pot.noEntries"))}</p>`}
+          </div>
+          <div class="panel reveal" id="receipts">
+            <h2>🧾 ${esc(t("pot.receipts"))}</h2>
+            <p class="card-meta">${esc(t("pot.receiptsHint", { n: receipts.length, m: outs.length }))}</p>
+            ${receipts.length ? `<div class="receipt-grid">${receipts.map((e) => `
+              <button type="button" class="receipt-card" data-receipt="${esc(e.id)}">
+                <img src="${esc(e.receiptUrl)}" alt="" loading="lazy">
+                <span class="receipt-meta"><strong>${esc(money(e.cents))}</strong><span>${esc(loc(e, "label"))}</span><span>${esc(fmtDate(e.date))}</span></span>
+              </button>`).join("")}</div>`
+            : `<p class="card-meta" style="margin-top:12px">${esc(t("pot.noReceipts"))}</p>`}
+          </div>
         </div>
       </div>`;
     requestAnimationFrame(() => setTimeout(() => $$("#potRoot .bar i").forEach((b) => (b.style.width = b.dataset.w + "%")), 150));
+    bindReceipts(root, entries, events);
+    const ack = $("#potAck"), give = $("#potGive");
+    if (ack && give) {
+      const sync = () => { give.classList.toggle("is-locked", !ack.checked); give.setAttribute("aria-disabled", String(!ack.checked)); };
+      ack.addEventListener("change", sync);
+      give.addEventListener("click", (e) => { if (!ack.checked) { e.preventDefault(); toast(t("pot.ackFirst")); ack.focus(); } });
+    }
   }
 
   /* ---------------- Proposer (public) ---------------- */
+  async function renderProposalList() {
+    const box = $("#propList");
+    if (!box) return;
+    let list = [];
+    try { list = await Store.listPublicProposals(); } catch (e) { if (!e.code) console.error(e); }
+    box.innerHTML = `
+      <h2>${esc(t("prop.listTitle"))} <span class="going-count">· ${list.length}</span></h2>
+      <p class="card-meta">${esc(t("prop.listHint"))}</p>
+      ${list.length ? `<ul class="idea-list">${list.map((p) => `
+        <li class="idea">
+          <div class="idea-head">
+            <strong>${esc(p.title)}</strong>
+            <span class="tag tag-${esc(p.status)}">${esc(t(p.status === "accepted" ? "prop.stAccepted" : "prop.stPending"))}</span>
+          </div>
+          ${p.description ? `<p>${esc(p.description)}${p.description.length >= 200 ? "…" : ""}</p>` : ""}
+          <span class="idea-date">${esc(new Date(p.createdAt).toLocaleDateString(locale(), { day: "numeric", month: "short" }))}</span>
+        </li>`).join("")}</ul>`
+      : `<p class="card-meta" style="margin-top:12px">${esc(t("prop.listEmpty"))}</p>`}`;
+  }
+
   function renderPropose() {
-    const root = $("#proposeRoot");
+    $("#proposeRoot").innerHTML = `
+      <div class="propose-layout">
+        <div id="propMain"></div>
+        <aside class="panel" id="propList" aria-live="polite"></aside>
+      </div>`;
+    renderProposeForm();
+    renderProposalList();
+  }
+
+  function renderProposeForm() {
+    const root = $("#propMain");
     root.innerHTML = `
       <form class="form panel" id="propForm" novalidate autocomplete="off">
         <div class="field"><label for="p_title">${esc(t("prop.what"))}</label><input type="text" id="p_title" name="ptitle" maxlength="80" required placeholder="${esc(t("prop.whatPh"))}"></div>
@@ -746,7 +848,7 @@
           <div class="field"><label for="p_when">${esc(t("prop.when"))}</label><input type="text" id="p_when" name="pwhen" maxlength="80" placeholder="${esc(t("prop.whenPh"))}"></div>
           <div class="field"><label for="p_name">${esc(t("prop.name"))}</label><input type="text" id="p_name" name="pname" maxlength="40" autocomplete="given-name"><small>🔒 ${esc(t("prop.nameHint"))}</small></div>
         </div>
-        <div class="field"><label for="p_needs">${esc(t("prop.needs"))}</label><input type="text" id="p_needs" name="pneeds" maxlength="300" placeholder="${esc(t("prop.needsPh"))}"></div>
+        <div class="field"><label for="p_needs">${esc(t("prop.needs"))}</label><input type="text" id="p_needs" name="pneeds" maxlength="300" placeholder="${esc(t("prop.needsPh"))}"><small>🔒 ${esc(t("prop.nameHint"))}</small></div>
         <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
         <div class="btn-row"><button class="btn btn-primary" type="submit">${esc(t("prop.send"))}</button></div>
       </form>`;
@@ -754,7 +856,8 @@
     const shownAt = Date.now();
     const thanks = () => {
       root.innerHTML = `<div class="panel success"><span class="big">💡</span><h2>${esc(t("prop.thanksT"))}</h2><p>${esc(t("prop.thanksP"))}</p><button class="btn" id="propAgain">${esc(t("prop.another"))}</button></div>`;
-      $("#propAgain").onclick = renderPropose;
+      $("#propAgain").onclick = renderProposeForm;
+      renderProposalList();
     };
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -869,6 +972,11 @@
                   ${events.slice().sort(sortByStart).reverse().map((ev) => `<option value="${esc(ev.id)}">${esc(ev.emoji || "")} ${esc(loc(ev, "title"))}</option>`).join("")}
                 </select></div>
             </div>
+            <div class="field" id="receiptField" hidden>
+              <label for="pe_receipt">🧾 ${esc(t("apot.receipt"))}</label>
+              <input type="file" id="pe_receipt" name="receipt" accept="image/*">
+              <small>${esc(t("apot.receiptHint"))}</small>
+            </div>
             <div class="btn-row"><button class="btn btn-primary" type="submit">${esc(t("apot.addBtn"))}</button></div>
           </form>
           <div class="panel">
@@ -896,21 +1004,42 @@
         toast(t("apot.saved"));
       } catch (err) { console.error(err); toast(err.code === "INVALID" ? t("apot.badUrl") : errMsg(err)); }
     });
-    $("#potEntryForm").addEventListener("submit", async (e) => {
+    const entryForm = $("#potEntryForm");
+    const syncKind = () => ($("#receiptField").hidden = entryForm.kind.value !== "out");
+    $$("input[name=kind]", entryForm).forEach((r) => r.addEventListener("change", syncKind));
+    entryForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const f = e.target;
       const cents = parseEuros(f.amount.value);
       if (cents <= 0 || !f.label.value.trim()) { toast(t("apot.invalid")); return; }
+      const file = f.kind.value === "out" && f.receipt.files[0] ? f.receipt.files[0] : null;
+      const btn = $("button[type=submit]", f);
+      btn.disabled = true;
+      if (file) toast(t("apot.uploading"));
       try {
-        await Store.addPotEntry({ kind: f.kind.value, cents, label: f.label.value, label_en: f.label_en.value, date: f.date.value, eventId: f.eventId.value });
+        await Store.addPotEntry({ kind: f.kind.value, cents, label: f.label.value, label_en: f.label_en.value, date: f.date.value, eventId: f.eventId.value }, file);
         toast(t("apot.added"));
         renderAdminPot();
-      } catch (err) { console.error(err); toast(err.code === "INVALID" ? t("apot.invalid") : errMsg(err)); }
+      } catch (err) {
+        if (!err.code) console.error(err);
+        btn.disabled = false;
+        toast(err.code === "INVALID" ? t("apot.invalid") : errMsg(err));
+      }
     });
+    bindReceipts($("#adminRoot"), entries, events);
+    $("#adminRoot").onchange = async (e) => {
+      const input = e.target.closest("[data-attach]");
+      if (!input || !input.files[0]) return;
+      const entry = entries.find((x) => x.id === input.dataset.attach);
+      toast(t("apot.uploading"));
+      try { await Store.attachReceipt(entry, input.files[0]); toast(t("apot.receiptSaved")); renderAdminPot(); }
+      catch (err) { if (!err.code) console.error(err); toast(errMsg(err)); }
+    };
     $("#adminRoot").onclick = async (e) => {
       const d = e.target.closest("[data-delpot]");
       if (d && confirm(t("apot.delConfirm"))) {
-        try { await Store.deletePotEntry(d.dataset.delpot); renderAdminPot(); } catch (err) { console.error(err); toast(errMsg(err)); }
+        const entry = entries.find((x) => x.id === d.dataset.delpot);
+        try { await Store.deletePotEntry(entry); renderAdminPot(); } catch (err) { console.error(err); toast(errMsg(err)); }
       }
     };
   }

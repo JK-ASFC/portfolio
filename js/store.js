@@ -392,6 +392,17 @@
       return true;
     },
 
+    /** Idées déjà proposées, visibles par tous (sans prénom ni besoins). */
+    async listPublicProposals() {
+      if (!REMOTE) {
+        return local.read(LS_PROPOSALS, []).filter((p) => p.status !== "rejected")
+          .sort((a, b) => (b.status === "accepted") - (a.status === "accepted") || (b.createdAt || "").localeCompare(a.createdAt || ""))
+          .slice(0, 60).map((p) => ({ id: p.id, title: p.title, description: (p.description || "").slice(0, 200), status: p.status, createdAt: p.createdAt }));
+      }
+      const rows = await rpc("public_proposals", {});
+      return rows.map((r) => ({ id: r.id, title: r.title, description: r.description, status: r.status, createdAt: r.created_at }));
+    },
+
     async listProposals() {
       if (!REMOTE) return local.read(LS_PROPOSALS, []);
       const rows = await sb("proposals?select=id,title,description,when_text,needs,name,lang,status,created_at&order=created_at.desc", {}, true);
@@ -416,18 +427,24 @@
     /* ----- Pot commun ----- */
     async getPot() {
       const empty = { url: "", goal: 0, description: "", description_en: "" };
+      // lien par défaut (js/config.js) tant qu'aucun lien n'est réglé dans Organiser → Pot commun
+      const withDefault = (st) => ({ ...st, url: st.url || cfg.potUrl || "" });
       if (!REMOTE) {
         const entries = local.read(LS_POT_ENTRIES, []).slice()
           .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
-        return { settings: { ...empty, ...local.read(LS_POT, {}) }, entries };
+        return { settings: withDefault({ ...empty, ...local.read(LS_POT, {}) }), entries: entries.map((e) => ({ ...e, receiptUrl: e.receipt || null })) };
       }
       const [set, rows] = await Promise.all([
         sb("settings?select=data&key=eq.pot"),
         sb("pot_entries?select=*&order=entry_date.desc,created_at.desc")
       ]);
       return {
-        settings: { ...empty, ...((set[0] && set[0].data) || {}) },
-        entries: rows.map((r) => ({ id: r.id, kind: r.kind, cents: r.amount_cents, label: r.label, label_en: r.label_en, date: r.entry_date, eventId: r.event_id, createdAt: r.created_at }))
+        settings: withDefault({ ...empty, ...((set[0] && set[0].data) || {}) }),
+        entries: rows.map((r) => ({
+          id: r.id, kind: r.kind, cents: r.amount_cents, label: r.label, label_en: r.label_en, date: r.entry_date,
+          eventId: r.event_id, createdAt: r.created_at, receiptPath: r.receipt_path || null,
+          receiptUrl: r.receipt_path ? `${BASE}/storage/v1/object/public/receipts/${r.receipt_path}` : null
+        }))
       };
     },
 
@@ -442,7 +459,60 @@
       await sb("settings?key=eq.pot", { method: "PATCH", body: JSON.stringify({ data: clean, updated_at: new Date().toISOString() }) }, true);
     },
 
-    async addPotEntry(e) {
+    /**
+     * Ré-encode une photo en JPEG (max 1600 px) : allège le fichier et supprime
+     * toutes les métadonnées (position GPS, appareil…). Erreur IMAGE si illisible.
+     */
+    async compressImage(file, maxSide = 1600, quality = 0.82) {
+      if (!file || !/^image\//.test(file.type || "image/")) throw fail("IMAGE");
+      if (file.size > 25 * 1024 * 1024) throw fail("IMAGE");
+      let bmp;
+      try { bmp = await createImageBitmap(file, { imageOrientation: "from-image" }); } catch (e) { throw fail("IMAGE"); }
+      const k = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(bmp, 0, 0, c.width, c.height);
+      bmp.close && bmp.close();
+      const blob = await new Promise((res) => c.toBlob(res, "image/jpeg", quality));
+      if (!blob) throw fail("IMAGE");
+      return blob;
+    },
+
+    /** Envoie un ticket et renvoie sa référence (chemin Storage, ou image en mode démo). */
+    async uploadReceipt(file) {
+      if (!REMOTE) {
+        const blob = await this.compressImage(file, 900, 0.7);
+        return await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(fail("IMAGE")); r.readAsDataURL(blob); });
+      }
+      const blob = await this.compressImage(file);
+      if (blob.size > 3 * 1024 * 1024) throw fail("IMAGE");
+      const path = `${new Date().getFullYear()}/${crypto.randomUUID ? crypto.randomUUID() : uid()}.jpg`;
+      const tk = await token();
+      if (!tk) throw fail("AUTH");
+      let res;
+      try {
+        res = await fetch(`${BASE}/storage/v1/object/receipts/${path}`, {
+          method: "POST",
+          headers: { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${tk}`, "Content-Type": "image/jpeg", "x-upsert": "false" },
+          body: blob
+        });
+      } catch (e) { throw fail("NETWORK"); }
+      if (!res.ok) throw fail(res.status === 401 || res.status === 403 ? "AUTH" : "UPLOAD");
+      return path;
+    },
+
+    async removeReceipt(path) {
+      if (!REMOTE || !path) return;
+      const tk = await token();
+      if (!tk) return;
+      try {
+        await fetch(`${BASE}/storage/v1/object/receipts/${path}`, { method: "DELETE", headers: { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${tk}` } });
+      } catch (e) { /* le fichier orphelin pourra être supprimé depuis Supabase */ }
+    },
+
+    async addPotEntry(e, receiptFile) {
       const row = {
         kind: e.kind === "out" ? "out" : "in",
         cents: Math.round(Number(e.cents) || 0),
@@ -452,20 +522,43 @@
         eventId: e.eventId || null
       };
       if (row.cents <= 0 || row.cents > 10000000 || !row.label) throw fail("INVALID");
+      const receipt = receiptFile ? await this.uploadReceipt(receiptFile) : null;
       if (!REMOTE) {
         const all = local.read(LS_POT_ENTRIES, []);
-        all.push({ ...row, id: uid(), createdAt: new Date().toISOString() });
+        all.push({ ...row, id: uid(), receipt, createdAt: new Date().toISOString() });
         local.write(LS_POT_ENTRIES, all);
+        if (receipt && local.read(LS_POT_ENTRIES, []).length !== all.length) throw fail("STORAGE");
         return;
       }
-      await sb("pot_entries", { method: "POST", body: JSON.stringify({
-        kind: row.kind, amount_cents: row.cents, label: row.label, label_en: row.label_en, entry_date: row.date, event_id: row.eventId
-      }) }, true);
+      try {
+        await sb("pot_entries", { method: "POST", body: JSON.stringify({
+          kind: row.kind, amount_cents: row.cents, label: row.label, label_en: row.label_en,
+          entry_date: row.date, event_id: row.eventId, receipt_path: receipt
+        }) }, true);
+      } catch (err) { await this.removeReceipt(receipt); throw err; }
     },
 
-    async deletePotEntry(id) {
-      if (!REMOTE) { local.write(LS_POT_ENTRIES, local.read(LS_POT_ENTRIES, []).filter((x) => x.id !== id)); return; }
-      await sb(`pot_entries?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }, true);
+    /** Ajoute (ou remplace) le ticket d'un mouvement existant. */
+    async attachReceipt(entry, file) {
+      const receipt = await this.uploadReceipt(file);
+      if (!REMOTE) {
+        const all = local.read(LS_POT_ENTRIES, []);
+        const x = all.find((y) => y.id === entry.id);
+        if (x) x.receipt = receipt;
+        local.write(LS_POT_ENTRIES, all);
+        if ((local.read(LS_POT_ENTRIES, []).find((y) => y.id === entry.id) || {}).receipt !== receipt) throw fail("STORAGE");
+        return;
+      }
+      try {
+        await sb(`pot_entries?id=eq.${encodeURIComponent(entry.id)}`, { method: "PATCH", body: JSON.stringify({ receipt_path: receipt }) }, true);
+      } catch (err) { await this.removeReceipt(receipt); throw err; }
+      if (entry.receiptPath) await this.removeReceipt(entry.receiptPath);
+    },
+
+    async deletePotEntry(entry) {
+      if (!REMOTE) { local.write(LS_POT_ENTRIES, local.read(LS_POT_ENTRIES, []).filter((x) => x.id !== entry.id)); return; }
+      await sb(`pot_entries?id=eq.${encodeURIComponent(entry.id)}`, { method: "DELETE" }, true);
+      await this.removeReceipt(entry.receiptPath);
     },
 
     resetDemo() {

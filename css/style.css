@@ -460,7 +460,42 @@ tr:last-child td { border-bottom: 0; }
 .ledger-row.out .ledger-amount { color: #b3243f; }
 .ledger-total { font-family: var(--f-display); font-size: 1.4rem; margin: 10px 0 6px; text-align: right; }
 
+.pot-pledge { text-align: left; background: rgba(246, 238, 220, .08); border: 1.5px dashed rgba(246, 238, 220, .45); border-radius: 14px; padding: 12px 14px; margin: 4px 0 14px; font-size: .9rem; }
+.pot-pledge p { margin: 0 0 8px; }
+.pot-pledge p:last-child { margin-bottom: 0; }
+.pot-pledge-title { font-weight: 700; color: var(--sun); }
+.pot-ack { text-align: left; font-size: .9rem; margin-bottom: 14px; }
+.btn.is-locked { opacity: .45; filter: grayscale(.6); }
+.btn.is-locked:hover { transform: none; box-shadow: var(--shadow-sm); }
+.ledger-receipt { margin-top: 4px; }
+.receipt-btn { font: 600 .8rem var(--f-body); color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+.receipt-btn:hover { background: var(--sun); }
+.no-receipt { font: 700 .7rem var(--f-mono); text-transform: uppercase; color: #b3243f; }
+.ledger-admin { display: flex; gap: 6px; align-items: center; }
+.file-btn { cursor: pointer; }
+#receipts { margin-top: 24px; }
+.receipt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 14px; }
+.receipt-card { display: flex; flex-direction: column; padding: 0; overflow: hidden; text-align: left; cursor: pointer; background: var(--paper); border: 2px solid var(--ink); border-radius: 14px; box-shadow: var(--shadow-sm); font: inherit; color: var(--ink); transition: transform .2s var(--ease); }
+.receipt-card:hover { transform: translate(-2px, -2px); }
+.receipt-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; background: var(--cream-2); border-bottom: 2px solid var(--ink); }
+.receipt-meta { display: grid; padding: 8px 10px; font-size: .78rem; color: var(--muted); }
+.receipt-meta strong { font-family: var(--f-mono); color: var(--ink); font-size: .9rem; }
+.receipt-dialog { border: 0; padding: 0; background: transparent; max-width: min(92vw, 720px); }
+.receipt-dialog::backdrop { background: rgba(20, 18, 58, .75); }
+.receipt-box { position: relative; background: var(--paper); border: 2px solid var(--ink); border-radius: var(--radius); padding: 16px; display: grid; gap: 10px; }
+.receipt-box img { max-height: 72vh; width: auto; max-width: 100%; margin: 0 auto; border-radius: 10px; border: 2px solid var(--ink); }
+.receipt-box p { margin: 0; }
+.receipt-close { position: absolute; top: 8px; right: 8px; z-index: 1; }
+
 /* ---------------- Propositions & admin ---------------- */
+.propose-layout { display: grid; grid-template-columns: 1.15fr .85fr; gap: 28px; align-items: start; }
+#propList { position: sticky; top: 90px; max-height: calc(100vh - 120px); overflow-y: auto; }
+.idea-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+.idea { background: var(--cream); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; }
+.idea-head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.idea p { margin: 0; font-size: .88rem; color: var(--ink-2); }
+.idea-date { font: .72rem var(--f-mono); color: var(--muted); }
+.idea .tag { flex: none; font-size: .62rem; padding: 4px 7px; }
 .admin-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
 .admin-tabs .chip { text-decoration: none; }
 .proposal { background: var(--paper); border: 2px solid var(--ink); border-radius: 16px; padding: 16px 18px; display: grid; gap: 8px; }
@@ -531,7 +566,8 @@ tr:last-child td { border-bottom: 0; }
   .demo-banner { left: 8px; right: 8px; bottom: 8px; max-width: none; }
 }
 @media (max-width: 900px) {
-  .pot-layout { grid-template-columns: 1fr; }
+  .pot-layout, .propose-layout { grid-template-columns: 1fr; }
+  #propList { position: static; max-height: none; }
 }
 @media (max-width: 760px) {
   .nav {
@@ -549,7 +585,7 @@ tr:last-child td { border-bottom: 0; }
   .toast { bottom: 92px; }
   .demo-banner { bottom: 86px !important; }
   .ledger-row { grid-template-columns: auto 1fr auto; }
-  .ledger-row .icon-btn { grid-column: 3; }
+  .ledger-admin { grid-column: 2 / -1; justify-content: flex-end; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
