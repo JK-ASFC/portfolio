@@ -284,7 +284,7 @@
       <form class="form" id="rsvpForm" novalidate autocomplete="off">
         <div class="field">
           <label for="f_name">${esc(t("form.name"))}</label>
-          <input type="text" id="f_name" name="fname" required maxlength="40" autocomplete="given-name" value="${esc(mine ? mine.name : "")}">
+          <input type="text" id="f_name" name="fname" required maxlength="40" autocomplete="name" placeholder="${esc(t("form.namePh"))}" value="${esc(mine ? mine.name : "")}">
           <small>${esc(t("form.nameHint"))}</small>
         </div>
         <label class="check">
@@ -339,6 +339,7 @@
       if (Date.now() - shownAt < 2500) { toast(t("form.tooFast")); return; }
       const name = form.fname.value.replace(/\s+/g, " ").trim();
       if (!name) { form.fname.focus(); toast(t("form.needName")); return; }
+      if (!/\s\S/.test(name)) { form.fname.focus(); toast(t("err.NAME_INITIAL")); return; }
       const answers = {};
       (ev.questions || []).forEach((qq) => { const el = form[`q_${qq.id}`]; if (el && el.value.trim()) answers[qq.id] = el.value.trim(); });
       const st2 = form.status.value;
@@ -362,7 +363,7 @@
         btn.disabled = false;
         toast(errMsg(err));
         if (err.code === "ALREADY_ANSWERED") renderEvent(ev.id);
-        if (err.code === "NAME_TAKEN") form.fname.focus();
+        if (err.code === "NAME_TAKEN" || err.code === "NAME_INITIAL") form.fname.focus();
       }
     });
   }
@@ -610,11 +611,20 @@
   }
 
   /** Repère les prénoms proches (même premier mot) : aide à repérer les doublons. */
+  /**
+   * Repère les réponses qui sont PEUT-ÊTRE la même personne : l'un des noms est le début de
+   * l'autre (« Marc » / « Marc D. »). Deux homonymes bien distingués (« Marc D. » / « Marc L. »)
+   * ne sont pas signalés.
+   */
   function similarNames(rs) {
-    const key = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, "").trim().split(" ")[0];
-    const groups = {};
-    rs.forEach((r) => { const k = key(r.name); (groups[k] = groups[k] || []).push(r.name); });
-    return Object.values(groups).filter((g) => g.length > 1).map((g) => g.join(" / "));
+    const key = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+    const out = [];
+    for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
+      const a = key(rs[i].name), b = key(rs[j].name);
+      const [s1, s2] = a.length <= b.length ? [a, b] : [b, a];
+      if (s1 === s2 || s2.startsWith(s1 + " ") || (s2.startsWith(s1) && s1.includes(" "))) out.push(`${rs[i].name} / ${rs[j].name}`);
+    }
+    return out;
   }
 
   async function renderResponses(id) {

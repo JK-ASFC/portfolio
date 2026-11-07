@@ -139,6 +139,7 @@
     const name = String(p.name || "").replace(/\s+/g, " ").trim();
     const key = nameKey(name);
     if (!name || name.length > 40 || !key) throw fail("INVALID");
+    if (!/^[a-z0-9]+( [a-z0-9]+)+$/.test(key)) throw fail("NAME_INITIAL");
     if (!["yes", "maybe", "no"].includes(p.status)) throw fail("INVALID");
     let guests = Number(p.guests) || 0;
     if (guests < 0 || guests > 10) throw fail("INVALID");
@@ -231,7 +232,7 @@
     if (!res.ok) {
       let msg = "";
       try { msg = JSON.parse(txt).message || ""; } catch (e) { /* ignore */ }
-      const known = ["INVALID", "EVENT_NOT_FOUND", "EVENT_CLOSED", "ALREADY_ANSWERED", "NAME_TAKEN", "FULL", "RATE_LIMIT", "NOT_FOUND"];
+      const known = ["INVALID", "EVENT_NOT_FOUND", "EVENT_CLOSED", "ALREADY_ANSWERED", "NAME_TAKEN", "NAME_INITIAL", "FULL", "RATE_LIMIT", "NOT_FOUND"];
       if (known.includes(msg)) throw fail(msg);
       if (res.status === 401 || res.status === 403) throw fail("AUTH");
       throw fail("INVALID");
