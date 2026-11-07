@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LEONE — Les événements de la résidence</title>
-  <meta name="description" content="Tous les événements de la résidence LEONE / All LEONE residence events : soirées, matchs, repas partagés.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>LEONE</title>
+  <meta name="description" content="Événements de la résidence LEONE · LEONE residence events">
   <meta name="theme-color" content="#14123a">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23ffd23f'/><stop offset='1' stop-color='%23ff4f1f'/></linearGradient></defs><circle cx='32' cy='32' r='30' fill='url(%23g)'/><rect x='0' y='36' width='64' height='4' fill='%2314123a'/><rect x='0' y='46' width='64' height='5' fill='%2314123a'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,123 +15,54 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <a class="skip" href="#main" data-i18n="skip">Aller au contenu</a>
+  <a class="skip" href="#main" data-i18n="skip"></a>
 
-  <!-- ============ HEADER ============ -->
   <header class="topbar" id="topbar">
     <a href="#/" class="logo" aria-label="LEONE">
       <span class="logo-sun" aria-hidden="true"></span>
       <span class="logo-word">LEONE</span>
     </a>
-    <nav class="nav" id="nav">
-      <a href="#/" data-route="home" data-i18n="nav.home">Accueil</a>
-      <a href="#/events" data-route="events" data-i18n="nav.events">Événements</a>
-      <a href="#/residence" data-route="residence" data-i18n="nav.residence">La Résidence</a>
-      <a href="#/how" data-route="how" data-i18n="nav.how">Comment ça marche</a>
-      <a href="#/admin" data-route="admin" class="nav-admin" data-i18n="nav.admin">Organiser</a>
-    </nav>
     <div class="top-actions">
-      <div class="lang" role="group" data-i18n-aria="lang.label" aria-label="Langue">
+      <a href="#/admin" class="nav-admin" id="navAdmin" data-i18n="nav.admin"></a>
+      <div class="lang" role="group" data-i18n-aria="lang.label">
         <button type="button" data-lang="fr" lang="fr" aria-label="Français">FR</button>
         <button type="button" data-lang="en" lang="en" aria-label="English">EN</button>
       </div>
-      <button class="burger" id="burger" data-i18n-aria="menu.open" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="nav">
-        <span></span><span></span><span></span>
-      </button>
     </div>
   </header>
 
   <div class="demo-banner" id="demoBanner" hidden>
     <span data-i18n-html="demo.banner"></span>
-    <button class="demo-close" id="demoClose" data-i18n-aria="demo.close" aria-label="Masquer ce message">✕</button>
+    <button class="demo-close" id="demoClose" data-i18n-aria="demo.close">✕</button>
   </div>
 
   <main id="main">
 
-    <!-- ============ ACCUEIL ============ -->
+    <!-- ============ ACCUEIL = LISTE DES ÉVÉNEMENTS ============ -->
     <section class="view" data-view="home">
       <div class="hero">
         <div class="hero-sky" aria-hidden="true">
           <div class="stars"></div>
           <div class="sun"><i></i><i></i><i></i><i></i><i></i></div>
-          <div class="planet"></div>
         </div>
         <div class="hero-grid" aria-hidden="true"></div>
-
         <div class="hero-content">
-          <p class="kicker reveal" data-i18n="home.kicker"></p>
-          <h1 class="hero-title reveal">
-            <span class="line" data-i18n="home.t1"></span>
-            <span class="line" data-i18n="home.t2"></span>
-            <span class="line accent" data-i18n="home.t3"></span>
-          </h1>
-          <p class="hero-sub reveal" data-i18n-html="home.sub"></p>
-          <div class="hero-cta reveal">
-            <a href="#/events" class="btn btn-primary"><span data-i18n="home.cta1"></span> <span aria-hidden="true">→</span></a>
-            <a href="#/residence" class="btn btn-ghost" data-i18n="home.cta2"></a>
+          <h1 class="hero-title">LEONE</h1>
+          <p class="kicker" data-i18n="home.kicker"></p>
+        </div>
+        <aside class="next-card" id="nextCard" aria-live="polite"></aside>
+      </div>
+
+      <section class="block">
+        <div class="list-head">
+          <h2 data-i18n="home.title"></h2>
+          <div class="filters" id="filters" role="tablist" data-i18n-aria="filter.aria">
+            <button class="chip is-active" data-filter="upcoming" role="tab" aria-selected="true" data-i18n="filter.upcoming"></button>
+            <button class="chip" data-filter="past" role="tab" aria-selected="false" data-i18n="filter.past"></button>
           </div>
         </div>
-
-        <aside class="next-card reveal" id="nextCard" aria-live="polite"></aside>
-      </div>
-
-      <div class="marquee" aria-hidden="true">
-        <div class="marquee-track" id="marquee"></div>
-      </div>
-
-      <section class="block">
-        <div class="block-head reveal">
-          <p class="eyebrow" data-i18n="home.upEyebrow"></p>
-          <h2 data-i18n="home.upTitle"></h2>
-        </div>
-        <div class="cards" id="homeEvents"></div>
-        <div class="center reveal"><a href="#/events" class="btn btn-dark" data-i18n="home.allBtn"></a></div>
-      </section>
-
-      <section class="block block-stats">
-        <div class="stats">
-          <div class="stat reveal"><strong data-count="events">0</strong><span data-i18n="stats.events"></span></div>
-          <div class="stat reveal"><strong data-count="people">0</strong><span data-i18n="stats.people"></span></div>
-          <div class="stat reveal"><strong data-count="items">0</strong><span data-i18n="stats.items"></span></div>
-        </div>
-      </section>
-
-      <section class="block">
-        <div class="pillars">
-          <article class="pillar reveal" style="--c: var(--orange)">
-            <div class="pillar-ico">01</div>
-            <h3 data-i18n="p1.t"></h3>
-            <p data-i18n="p1.p"></p>
-          </article>
-          <article class="pillar reveal" style="--c: var(--teal)">
-            <div class="pillar-ico">02</div>
-            <h3 data-i18n="p2.t"></h3>
-            <p data-i18n="p2.p"></p>
-          </article>
-          <article class="pillar reveal" style="--c: var(--violet)">
-            <div class="pillar-ico">03</div>
-            <h3 data-i18n="p3.t"></h3>
-            <p data-i18n="p3.p"></p>
-          </article>
-        </div>
-      </section>
-    </section>
-
-    <!-- ============ ÉVÉNEMENTS ============ -->
-    <section class="view" data-view="events" hidden>
-      <div class="page-head">
-        <p class="eyebrow" data-i18n="events.eyebrow"></p>
-        <h1 data-i18n="events.title"></h1>
-        <p class="lead" data-i18n="events.lead"></p>
-        <div class="filters" id="filters" role="tablist" data-i18n-aria="filter.aria">
-          <button class="chip is-active" data-filter="upcoming" role="tab" aria-selected="true" data-i18n="filter.upcoming"></button>
-          <button class="chip" data-filter="past" role="tab" aria-selected="false" data-i18n="filter.past"></button>
-          <button class="chip" data-filter="all" role="tab" aria-selected="false" data-i18n="filter.all"></button>
-        </div>
-      </div>
-      <div class="block">
         <div class="cards" id="eventList"></div>
-      </div>
+      </section>
     </section>
 
     <!-- ============ DÉTAIL ÉVÉNEMENT ============ -->
@@ -137,74 +70,9 @@
       <div id="eventDetail"></div>
     </section>
 
-    <!-- ============ RÉSIDENCE ============ -->
-    <section class="view" data-view="residence" hidden>
-      <div class="page-head">
-        <p class="eyebrow" data-i18n="res.eyebrow"></p>
-        <h1 data-i18n="res.title"></h1>
-        <p class="lead" data-i18n="res.lead"></p>
-      </div>
-      <div class="block">
-        <div class="split">
-          <div class="split-visual reveal" aria-hidden="true">
-            <div class="building">
-              <div class="building-sun"></div>
-              <div class="building-body">
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
-              </div>
-              <div class="building-sign">LEONE</div>
-            </div>
-          </div>
-          <div class="split-text">
-            <h2 class="reveal" data-i18n="res.h2"></h2>
-            <p class="reveal" data-i18n="res.p"></p>
-            <ul class="ticks reveal">
-              <li data-i18n="res.li1"></li>
-              <li data-i18n="res.li2"></li>
-              <li data-i18n="res.li3"></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-      <div class="block">
-        <div class="values">
-          <div class="value reveal"><span class="value-emoji">🤝</span><h3 data-i18n="v1.t"></h3><p data-i18n="v1.p"></p></div>
-          <div class="value reveal"><span class="value-emoji">🍕</span><h3 data-i18n="v2.t"></h3><p data-i18n="v2.p"></p></div>
-          <div class="value reveal"><span class="value-emoji">✨</span><h3 data-i18n="v3.t"></h3><p data-i18n="v3.p"></p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ COMMENT ÇA MARCHE ============ -->
-    <section class="view" data-view="how" hidden>
-      <div class="page-head">
-        <p class="eyebrow" data-i18n="how.eyebrow"></p>
-        <h1 data-i18n="how.title"></h1>
-        <p class="lead" data-i18n="how.lead"></p>
-      </div>
-      <div class="block">
-        <ol class="steps">
-          <li class="step reveal"><span class="step-n">1</span><div><h3 data-i18n="s1.t"></h3><p data-i18n-html="s1.p"></p></div></li>
-          <li class="step reveal"><span class="step-n">2</span><div><h3 data-i18n="s2.t"></h3><p data-i18n="s2.p"></p></div></li>
-          <li class="step reveal"><span class="step-n">3</span><div><h3 data-i18n="s3.t"></h3><p data-i18n="s3.p"></p></div></li>
-        </ol>
-      </div>
-      <div class="block">
-        <div class="faq">
-          <details class="reveal"><summary data-i18n="f1.q"></summary><p data-i18n="f1.a"></p></details>
-          <details class="reveal"><summary data-i18n="f2.q"></summary><p data-i18n="f2.a"></p></details>
-          <details class="reveal"><summary data-i18n="f3.q"></summary><p data-i18n="f3.a"></p></details>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ ADMIN ============ -->
+    <!-- ============ ORGANISER ============ -->
     <section class="view" data-view="admin" hidden>
       <div class="page-head">
-        <p class="eyebrow" data-i18n="admin.eyebrow"></p>
         <h1 data-i18n="admin.title"></h1>
       </div>
       <div class="block" id="adminRoot"></div>
@@ -213,15 +81,8 @@
   </main>
 
   <footer class="footer">
-    <div class="footer-sun" aria-hidden="true"></div>
     <p class="footer-logo">LEONE</p>
-    <p data-i18n="footer.tag"></p>
-    <nav class="footer-nav">
-      <a href="#/events" data-i18n="nav.events"></a>
-      <a href="#/residence" data-i18n="nav.residence"></a>
-      <a href="#/how" data-i18n="nav.how"></a>
-      <a href="#/admin" data-i18n="nav.admin"></a>
-    </nav>
+    <p class="footer-privacy" data-i18n="footer.privacy"></p>
   </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
