@@ -9,7 +9,7 @@
 (function () {
   const cfg = window.LEONE_CONFIG || {};
   const REMOTE = Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey);
-  const BASE = REMOTE ? cfg.supabaseUrl.replace(/\/$/, "") : "";
+  const BASE = REMOTE ? cfg.supabaseUrl.replace(/\/+$/, "").replace(/\/rest\/v1$/, "") : "";
   const LS_EVENTS = "leone.events.v3";
   const LS_RESP = "leone.responses.v3";
   const LS_DEVICE = "leone.device";
