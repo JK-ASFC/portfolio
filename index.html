@@ -1,104 +1,240 @@
-<!DOCTYPE html>
-<html lang="en">
-
+<!doctype html>
+<html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            background: #000000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            perspective: 500px;
-            opacity: 1;
-            transition: opacity 1s ease-out;
-        }
-
-        .plate_wrapper {
-            width: 150px;
-            height: 130px;
-            margin-bottom: 400px; /* Ajout d'espace sous les éléments */
-        }
-
-        .plate_wrapper span {
-            background: #1184D1;
-            display: inline-block;
-            width: 50%;
-            height: 50%;
-            
-        }
-
-        .plate_wrapper span:nth-child(odd) {
-            border-right: 4px solid #000000;
-
-        }
-
-        .spinner {
-            box-sizing: border-box;
-            width: 60px;
-            height: 60px;
-            padding: 3px;
-            overflow: visible;
-            color: #ffffff; /* Couleur blanche pour la roue */
-        }
-
-        .spinner > circle {
-            fill: none;
-            stroke: currentColor;
-            cx: 50%;
-            cy: 50%;
-            r: 50%;
-            stroke-width: 6px;
-            stroke-linecap: round;
-            transform-origin: center;
-        }
-
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LEONE — Les événements de la résidence</title>
+  <meta name="description" content="Tous les événements de la résidence LEONE : soirées, matchs, repas partagés. Inscris-toi et dis ce que tu ramènes.">
+  <meta name="theme-color" content="#14123a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23ffd23f'/><stop offset='1' stop-color='%23ff4f1f'/></linearGradient></defs><circle cx='32' cy='32' r='30' fill='url(%23g)'/><rect x='0' y='36' width='64' height='4' fill='%2314123a'/><rect x='0' y='46' width='64' height='5' fill='%2314123a'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
-    <div class="plate_wrapper">
-        <span></span><span></span><span></span><span></span>
-    </div>
-    <svg class="spinner">
-        <circle>
-            <animateTransform attributeName="transform" type="rotate" values="-90;810" keyTimes="0;1" dur="2s" repeatCount="indefinite"></animateTransform>
-            <animate attributeName="stroke-dashoffset" values="0%;0%;-157.080%" calcMode="spline" keySplines="0.61, 1, 0.88, 1; 0.12, 0, 0.39, 0" keyTimes="0;0.5;1" dur="2s" repeatCount="indefinite"></animate>
-            <animate attributeName="stroke-dasharray" values="0% 314.159%;157.080% 157.080%;0% 314.159%" calcMode="spline" keySplines="0.61, 1, 0.88, 1; 0.12, 0, 0.39, 0" keyTimes="0;0.5;1" dur="2s" repeatCount="indefinite"></animate>
-        </circle>
-    </svg>
-    <audio id="startup-sound" src="assets/music/startup.mp3"></audio>
-    <script>
-        setTimeout(function () {
-            document.body.style.opacity = "0"; // Déclencher l'animation de fade-out
-        }, 4500); // Commencer le fade-out juste avant la redirection
+  <a class="skip" href="#main">Aller au contenu</a>
 
-        setTimeout(function () {
-            // Jouer la musique
-            document.getElementById("startup-sound").play();
-            setTimeout(function () {
-                window.location.href = 'start.html'; // Rediriger après la musique
-            }, 1000); // Temps pour laisser jouer le son (ajuster si nécessaire)
-        }, 6000); // Redirection après le fade-out
-    </script>
+  <!-- ============ HEADER ============ -->
+  <header class="topbar" id="topbar">
+    <a href="#/" class="logo" aria-label="LEONE — accueil">
+      <span class="logo-sun" aria-hidden="true"></span>
+      <span class="logo-word">LEONE</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Navigation principale">
+      <a href="#/" data-route="home">Accueil</a>
+      <a href="#/events" data-route="events">Événements</a>
+      <a href="#/residence" data-route="residence">La Résidence</a>
+      <a href="#/how" data-route="how">Comment ça marche</a>
+      <a href="#/admin" data-route="admin" class="nav-admin">Organiser</a>
+    </nav>
+    <button class="burger" id="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="nav">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <div class="demo-banner" id="demoBanner" hidden>
+    Mode démo : les données sont enregistrées uniquement dans ce navigateur.
+    Branche Supabase dans <code>js/config.js</code> pour partager avec toute la résidence.
+    <button class="demo-close" id="demoClose" aria-label="Masquer ce message">✕</button>
+  </div>
+
+  <main id="main">
+
+    <!-- ============ ACCUEIL ============ -->
+    <section class="view" data-view="home">
+      <div class="hero">
+        <div class="hero-sky" aria-hidden="true">
+          <div class="stars"></div>
+          <div class="sun"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="planet"></div>
+        </div>
+        <div class="hero-grid" aria-hidden="true"></div>
+
+        <div class="hero-content">
+          <p class="kicker reveal">Résidence LEONE · Est. 2026</p>
+          <h1 class="hero-title reveal">
+            <span class="line">On vit</span>
+            <span class="line">mieux</span>
+            <span class="line accent">ensemble.</span>
+          </h1>
+          <p class="hero-sub reveal">
+            Matchs, apéros, repas partagés, soirées jeux&nbsp;: tous les événements de la résidence
+            au même endroit. Tu t'inscris en 30&nbsp;secondes et tu dis ce que tu ramènes.
+          </p>
+          <div class="hero-cta reveal">
+            <a href="#/events" class="btn btn-primary">Voir les événements <span aria-hidden="true">→</span></a>
+            <a href="#/residence" class="btn btn-ghost">Découvrir LEONE</a>
+          </div>
+        </div>
+
+        <aside class="next-card reveal" id="nextCard" aria-live="polite">
+          <!-- rempli par JS -->
+        </aside>
+      </div>
+
+      <div class="marquee" aria-hidden="true">
+        <div class="marquee-track">
+          <span>Apéros</span><span>★</span><span>Matchs</span><span>★</span><span>Repas partagés</span><span>★</span>
+          <span>Soirées jeux</span><span>★</span><span>Ciné en bas</span><span>★</span><span>Anniversaires</span><span>★</span>
+          <span>Apéros</span><span>★</span><span>Matchs</span><span>★</span><span>Repas partagés</span><span>★</span>
+          <span>Soirées jeux</span><span>★</span><span>Ciné en bas</span><span>★</span><span>Anniversaires</span><span>★</span>
+        </div>
+      </div>
+
+      <section class="block">
+        <div class="block-head reveal">
+          <p class="eyebrow">À venir</p>
+          <h2>Les prochains rendez-vous</h2>
+        </div>
+        <div class="cards" id="homeEvents"></div>
+        <div class="center reveal"><a href="#/events" class="btn btn-dark">Tout le programme</a></div>
+      </section>
+
+      <section class="block block-stats">
+        <div class="stats">
+          <div class="stat reveal"><strong data-count="events">0</strong><span>événements créés</span></div>
+          <div class="stat reveal"><strong data-count="people">0</strong><span>réponses de voisins</span></div>
+          <div class="stat reveal"><strong data-count="items">0</strong><span>choses ramenées</span></div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="pillars">
+          <article class="pillar reveal" style="--c: var(--orange)">
+            <div class="pillar-ico">01</div>
+            <h3>Un seul programme</h3>
+            <p>Fini les messages perdus dans le groupe. Tous les events de LEONE sont ici, avec la date, le lieu et qui vient.</p>
+          </article>
+          <article class="pillar reveal" style="--c: var(--teal)">
+            <div class="pillar-ico">02</div>
+            <h3>Chacun ramène un truc</h3>
+            <p>Pour chaque événement, une liste de ce qu'il faut : chips, boissons, enceinte, chaises… Tu choisis, la liste se met à jour.</p>
+          </article>
+          <article class="pillar reveal" style="--c: var(--violet)">
+            <div class="pillar-ico">03</div>
+            <h3>Zéro prise de tête</h3>
+            <p>Pas de compte, pas d'appli à installer. Un formulaire, ton prénom, ton appart, et c'est réglé.</p>
+          </article>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============ ÉVÉNEMENTS ============ -->
+    <section class="view" data-view="events" hidden>
+      <div class="page-head">
+        <p class="eyebrow">Programme</p>
+        <h1>Événements</h1>
+        <p class="lead">Tout ce qui se passe à LEONE. Clique sur un événement pour t'inscrire.</p>
+        <div class="filters" id="filters" role="tablist" aria-label="Filtrer les événements">
+          <button class="chip is-active" data-filter="upcoming" role="tab" aria-selected="true">À venir</button>
+          <button class="chip" data-filter="past" role="tab" aria-selected="false">Passés</button>
+          <button class="chip" data-filter="all" role="tab" aria-selected="false">Tous</button>
+        </div>
+      </div>
+      <div class="block">
+        <div class="cards" id="eventList"></div>
+      </div>
+    </section>
+
+    <!-- ============ DÉTAIL ÉVÉNEMENT ============ -->
+    <section class="view" data-view="event" hidden>
+      <div id="eventDetail"></div>
+    </section>
+
+    <!-- ============ RÉSIDENCE ============ -->
+    <section class="view" data-view="residence" hidden>
+      <div class="page-head">
+        <p class="eyebrow">La Résidence</p>
+        <h1>Bienvenue à LEONE</h1>
+        <p class="lead">Une résidence, des voisins, et l'envie de faire des choses ensemble plutôt que chacun dans son coin.</p>
+      </div>
+      <div class="block">
+        <div class="split">
+          <div class="split-visual reveal" aria-hidden="true">
+            <div class="building">
+              <div class="building-sun"></div>
+              <div class="building-body">
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="building-sign">LEONE</div>
+            </div>
+          </div>
+          <div class="split-text">
+            <h2 class="reveal">Plus qu'une adresse</h2>
+            <p class="reveal">À LEONE, on se croise dans l'ascenseur, on se prête une perceuse, on regarde les matchs ensemble.
+              Ce site sert à une chose : transformer ces moments en vrais rendez-vous, où tout le monde est au courant
+              et où personne ne se retrouve à tout acheter seul.</p>
+            <ul class="ticks reveal">
+              <li>Des événements proposés par la résidence</li>
+              <li>Ouverts à tous les résidents (et leurs invités quand c'est précisé)</li>
+              <li>Organisation partagée : chacun apporte sa pierre</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="block">
+        <div class="values">
+          <div class="value reveal"><span class="value-emoji">🤝</span><h3>Respect</h3><p>Des voisins, du bruit raisonnable, et des espaces communs qu'on laisse propres.</p></div>
+          <div class="value reveal"><span class="value-emoji">🍕</span><h3>Partage</h3><p>On met en commun : la bouffe, le matos, les bonnes idées.</p></div>
+          <div class="value reveal"><span class="value-emoji">✨</span><h3>Ouverture</h3><p>Nouveau dans la résidence ? C'est le meilleur moyen de rencontrer tout le monde.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ COMMENT ÇA MARCHE ============ -->
+    <section class="view" data-view="how" hidden>
+      <div class="page-head">
+        <p class="eyebrow">Mode d'emploi</p>
+        <h1>Comment ça marche</h1>
+        <p class="lead">Trois étapes, aucune inscription.</p>
+      </div>
+      <div class="block">
+        <ol class="steps">
+          <li class="step reveal"><span class="step-n">1</span><div><h3>Choisis un événement</h3><p>Va dans l'onglet <a href="#/events">Événements</a> et ouvre celui qui te tente.</p></div></li>
+          <li class="step reveal"><span class="step-n">2</span><div><h3>Réponds au formulaire</h3><p>Ton prénom, ton appart, si tu viens, et avec combien de personnes.</p></div></li>
+          <li class="step reveal"><span class="step-n">3</span><div><h3>Dis ce que tu ramènes</h3><p>Coche ce que tu apportes dans la liste. Les quantités restantes se mettent à jour pour tout le monde.</p></div></li>
+        </ol>
+      </div>
+      <div class="block">
+        <div class="faq">
+          <details class="reveal"><summary>Je peux modifier ma réponse ?</summary><p>Pour l'instant, renvoie simplement une nouvelle réponse en précisant « modif » dans le message. L'organisateur fera le tri.</p></details>
+          <details class="reveal"><summary>Qui crée les événements ?</summary><p>Les organisateurs de la résidence, via l'onglet « Organiser ». Tu as une idée d'événement ? Parles-en à un organisateur.</p></details>
+          <details class="reveal"><summary>Mes infos sont visibles ?</summary><p>Ton prénom et ton appart apparaissent dans la liste des participants pour que chacun sache qui vient et qui ramène quoi. Rien d'autre.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ADMIN ============ -->
+    <section class="view" data-view="admin" hidden>
+      <div class="page-head">
+        <p class="eyebrow">Espace organisateur</p>
+        <h1>Organiser</h1>
+      </div>
+      <div class="block" id="adminRoot"></div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer-sun" aria-hidden="true"></div>
+    <p class="footer-logo">LEONE</p>
+    <p>Les événements de la résidence · Fait avec ❤ par les voisins</p>
+    <nav class="footer-nav">
+      <a href="#/events">Événements</a>
+      <a href="#/residence">La Résidence</a>
+      <a href="#/how">Comment ça marche</a>
+      <a href="#/admin">Organiser</a>
+    </nav>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
 </body>
-
 </html>
