@@ -1,6 +1,6 @@
 # LEONE — les événements de la résidence
 
-Site statique (HTML/CSS/JS, sans build), bilingue FR / EN, hébergé sur GitHub Pages.
+Site statique (HTML/CSS/JS, sans build), en 20 langues, hébergé sur GitHub Pages.
 Les résidents consultent les événements, répondent et indiquent ce qu'ils ramènent.
 Les organisateurs gèrent les événements depuis **Organiser**.
 
@@ -22,29 +22,12 @@ créole guadeloupéen et créole martiniquais.
 
 - **Bascule automatique** selon la langue de l'appareil (sinon anglais) ; choix manuel avec le menu 🌐,
   mémorisé sur l'appareil.
-- Les textes vus par les résidents sont traduits dans chaque langue (, chargé à la
+- Les textes vus par les résidents sont traduits dans chaque langue (`js/lang/<code>.js`, chargé à la
   demande). L'espace organisateur reste en français / anglais.
 - Le contenu écrit par les organisateurs (événements, messages…) s'affiche en anglais (si la version
   anglaise est remplie) pour toutes les langues autres que le français.
-- Ajouter ou corriger une langue : modifier , puis vérifier avec
-  ✓ ar      167/167
-✓ de      167/167
-✓ es      167/167
-✓ gcf-MQ  167/167
-✓ gcf     167/167
-✓ hi      167/167
-✓ it      167/167
-✓ ja      167/167
-✓ ko      167/167
-✓ ln      167/167
-✓ ms      167/167
-✓ pl      167/167
-✓ pt      167/167
-✓ ru      167/167
-✓ tr      167/167
-✓ uk      167/167
-✓ vi      167/167
-✓ zh      167/167 (textes manquants, variables  /  cassées).
+- Ajouter ou corriger une langue : modifier `js/lang/<code>.js`, puis vérifier avec
+  `node tools/check-i18n.js` (textes manquants, variables `{n}` / `{x}` cassées).
 - ⚠ Lingala et créoles : traductions à faire relire par une personne dont c'est la langue.
 
 ## Mise en ligne (GitHub Pages)
