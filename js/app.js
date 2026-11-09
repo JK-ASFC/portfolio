@@ -152,6 +152,7 @@
   let currentFilter = "upcoming";
   async function renderHome() {
     LEONE_EXT.renderHomeNotices(ctx);
+    LEONE_COMM.renderPolls(ctx, "#homePolls", true, 2);
     renderProposalList();
     const [events, stats] = await Promise.all([Store.listEvents(), Store.stats()]);
     const sorted = events.slice().sort(sortByStart);
@@ -247,6 +248,7 @@
             <span class="fact">${esc(tp("participants", st.headcount))}${ev.capacity ? ` / ${Number(ev.capacity)}` : ""}</span>
           </div>
           ${loc(ev, "description") ? `<p class="desc">${esc(loc(ev, "description"))}</p>` : ""}
+          ${past ? "" : LEONE_COMM.calendarHTML(ctx, ev)}
         </div>
       </div>
 
@@ -258,12 +260,15 @@
             <h2>${esc(t("ev.who"))} <span class="going-count">· ${esc(tp("responses", st.replies))}</span></h2>
             ${st.attendees.length ? `<ul class="people">${peopleHTML}</ul>` : `<p class="card-meta">${esc(t("ev.nobody"))}</p>`}
           </div>
+          <div id="galleryBox"></div>
         </div>
         <div class="sticky"><div class="panel" id="rsvpPanel"></div></div>
       </div>`;
 
     requestAnimationFrame(() => setTimeout(() => $$(".bar i", root).forEach((b) => (b.style.width = b.dataset.w + "%")), 150));
     if (funded.length) bindReceipts(root, funded, [ev]);
+    LEONE_COMM.bindCalendar(ctx, root, ev);
+    LEONE_COMM.renderGallery(ctx, ev, $("#galleryBox"));
 
     const panel = $("#rsvpPanel");
     if (past) {
@@ -447,6 +452,11 @@
     if (sub === "pot") return renderAdminPot();
     if (sub === "infos") return LEONE_EXT.renderAdminInfos(ctx, await adminTabs("infos"));
     if (sub === "guide") return LEONE_EXT.renderAdminGuide(ctx, await adminTabs("guide"), id);
+    if (sub === "photos") return LEONE_COMM.renderAdminPhotos(ctx, await adminTabs("photos"));
+    if (sub === "ads") return LEONE_COMM.renderAdminAds(ctx, await adminTabs("ads"));
+    if (sub === "reports") return LEONE_COMM.renderAdminReports(ctx, await adminTabs("reports"));
+    if (sub === "polls") return LEONE_COMM.renderAdminPolls(ctx, await adminTabs("polls"));
+    if (!sub) return LEONE_COMM.renderDashboard(ctx, await adminTabs("dashboard"));
 
     const [events, stats] = await Promise.all([Store.listEvents(), Store.stats()]);
     const list = events.slice().sort(sortByStart).reverse();
@@ -487,7 +497,7 @@
         if (del) {
           const ev = events.find((x) => x.id === del.dataset.del);
           if (ev && confirm(t("adm.delConfirm", { t: loc(ev, "title") }))) {
-            await Store.deleteEvent(ev.id); toast(t("adm.deleted")); renderAdmin();
+            await Store.deleteEvent(ev.id); toast(t("adm.deleted")); renderAdmin("events");
           }
         }
         if (dup) {
@@ -536,7 +546,7 @@
     ev = ev || { theme: "sunset", allowGuests: true, items: [], questions: [], emoji: "🎉", ...(pendingDraft || {}) };
     pendingDraft = null;
     $("#adminRoot").innerHTML = `
-      <div class="admin-bar"><h2>${esc(t(isNew ? "ed.newT" : "ed.editT"))}</h2><a class="btn btn-sm" href="#/admin">${esc(t("ed.back"))}</a></div>
+      <div class="admin-bar"><h2>${esc(t(isNew ? "ed.newT" : "ed.editT"))}</h2><a class="btn btn-sm" href="#/admin/events">${esc(t("ed.back"))}</a></div>
       <form class="form panel" id="evForm">
         <div class="row-3">
           <div class="field"><label for="e_emoji">${esc(t("ed.emoji"))}</label><input type="text" id="e_emoji" name="emoji" value="${esc(ev.emoji)}" maxlength="4"></div>
@@ -592,7 +602,7 @@
 
         <div class="btn-row">
           <button class="btn btn-primary" type="submit">${esc(t(isNew ? "ed.publish" : "ed.save"))}</button>
-          <a class="btn" href="#/admin">${esc(t("ed.cancel"))}</a>
+          <a class="btn" href="#/admin/events">${esc(t("ed.cancel"))}</a>
         </div>
       </form>`;
 
@@ -688,7 +698,7 @@
     $("#adminRoot").innerHTML = `
       <div class="admin-bar">
         <h2>${esc(ev.emoji || "")} ${esc(loc(ev, "title"))} · ${esc(t("rs.title"))}</h2>
-        <div class="admin-actions"><button class="btn btn-sm" id="csv">${esc(t("rs.csv"))}</button><a class="btn btn-sm" href="#/admin">${esc(t("ed.back"))}</a></div>
+        <div class="admin-actions"><button class="btn btn-sm" id="csv">${esc(t("rs.csv"))}</button><a class="btn btn-sm" href="#/admin/events">${esc(t("ed.back"))}</a></div>
       </div>
       <div class="mini-stats">
         <div><strong>${headcount}</strong><span>${esc(t("rs.expected"))}</span></div>
@@ -975,13 +985,23 @@
   /* ---------------- Organiser : onglets ---------------- */
   let pendingDraft = null;
   async function adminTabs(active) {
-    let n = 0;
-    try { n = (await Store.listProposals()).filter((p) => p.status === "new").length; } catch (e) { /* ignore */ }
+    const count = (p, f) => p.then((l) => l.filter(f).length, () => 0);
+    const [n, nPhotos, nReports] = await Promise.all([
+      count(Store.listProposals(), (p) => p.status === "new"),
+      count(Store.adminListPhotos(), (p) => p.status === "pending"),
+      count(Store.adminListReports(), (r) => r.status === "new")
+    ]);
+    const badge = (x) => (x ? ` (${x})` : "");
     const tab = (key, href, label) =>
       `<a class="chip ${active === key ? "is-active" : ""}" href="${href}" ${active === key ? 'aria-current="page"' : ""}>${esc(label)}</a>`;
     return `<nav class="admin-tabs" aria-label="${esc(t("nav.admin"))}">
-      ${tab("events", "#/admin", t("adm.tabEvents"))}
-      ${tab("proposals", "#/admin/proposals", t("adm.tabProposals") + (n ? ` (${n})` : ""))}
+      ${tab("dashboard", "#/admin", t("adm.tabDashboard"))}
+      ${tab("events", "#/admin/events", t("adm.tabEvents"))}
+      ${tab("proposals", "#/admin/proposals", t("adm.tabProposals") + badge(n))}
+      ${tab("reports", "#/admin/reports", t("adm.tabReports") + badge(nReports))}
+      ${tab("photos", "#/admin/photos", t("adm.tabPhotos") + badge(nPhotos))}
+      ${tab("polls", "#/admin/polls", t("adm.tabPolls"))}
+      ${tab("ads", "#/admin/ads", t("adm.tabAds"))}
       ${tab("pot", "#/admin/pot", t("adm.tabPot"))}
       ${tab("infos", "#/admin/infos", t("adm.tabInfos"))}
       ${tab("guide", "#/admin/guide", t("adm.tabGuide"))}
@@ -1147,11 +1167,11 @@
   }
 
   /* ---------------- Outils partagés avec js/residence.js ---------------- */
-  const ctx = { t, tp, esc, loc, toast, locale, $, $$, errMsg, observeReveals };
+  const ctx = { t, tp, esc, loc, toast, locale, $, $$, errMsg, observeReveals, lang: () => lang };
 
   /* ---------------- Menu « Plus » ---------------- */
   const moreBtn = $("#moreBtn"), moreMenu = $("#moreMenu");
-  const MORE_VIEWS = ["inventory", "guide", "admin"];
+  const MORE_VIEWS = ["inventory", "guide", "admin", "report", "polls", "app"];
   function setMore(open) { moreMenu.hidden = !open; moreBtn.setAttribute("aria-expanded", String(open)); }
   moreBtn.addEventListener("click", (e) => { e.stopPropagation(); setMore(moreMenu.hidden); if (!moreMenu.hidden) $("a", moreMenu).focus(); });
   document.addEventListener("click", (e) => { if (!moreMenu.hidden && !e.target.closest(".nav-more")) setMore(false); });
@@ -1165,7 +1185,7 @@
     try { parts = h.replace(/^#\/?/, "").split("/").map(decodeURIComponent); } catch (e) { parts = []; }
     const [name = "", sub, id] = parts;
     const openIdea = name === "propose"; // ancien lien « Proposer » : accueil + formulaire ouvert
-    const v = ["event", "admin", "pot", "infos", "inventory", "guide"].includes(name) ? name : "home";
+    const v = ["event", "admin", "pot", "infos", "inventory", "guide", "ads", "report", "polls", "app"].includes(name) ? name : "home";
     setMore(false);
 
     $$(".view").forEach((s) => (s.hidden = s.dataset.view !== v));
@@ -1186,10 +1206,14 @@
       if (v === "infos") await LEONE_EXT.renderInfos(ctx);
       if (v === "inventory") await LEONE_EXT.renderInventory(ctx);
       if (v === "guide") await LEONE_EXT.renderGuide(ctx);
+      if (v === "ads") await LEONE_COMM.renderAds(ctx);
+      if (v === "report") await LEONE_COMM.renderReports(ctx);
+      if (v === "polls") await LEONE_COMM.renderPolls(ctx);
+      if (v === "app") await LEONE_COMM.renderApp(ctx);
     } catch (err) {
       if (!err.code) console.error(err);
       // message affiché dans la page elle-même (plutôt qu'une page vide)
-      const roots = { home: "#eventList", inventory: "#inventoryRoot", infos: "#infosRoot", pot: "#potRoot", admin: "#adminRoot" };
+      const roots = { home: "#eventList", inventory: "#inventoryRoot", infos: "#infosRoot", pot: "#potRoot", admin: "#adminRoot", ads: "#adsRoot", report: "#reportRoot", polls: "#pollsRoot", guide: "#guideRoot" };
       const box = roots[v] && $(roots[v]);
       if (box && err.code === "DB_OUTDATED") box.innerHTML = `<div class="empty">⚙️ ${esc(errMsg(err))}</div>`;
       else toast(errMsg(err));
@@ -1225,6 +1249,7 @@
   }
 
   window.addEventListener("hashchange", () => route());
+  LEONE_COMM.initPwa(ctx);
   // langue d'abord (chargée si besoin, repli sur l'anglais), puis la page, puis les messages pop-up
   loadLang(lang)
     .then((ok) => { if (!ok) lang = "en"; applyStatic(); return route(); })
