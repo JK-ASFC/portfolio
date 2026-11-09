@@ -54,9 +54,10 @@ Sans Supabase, le site tourne en **mode démo** : chaque navigateur a ses propre
 
 ## Propositions d'événements
 
-Onglet **Proposer** : les résidents envoient une idée (titre, détails, quand, ce qu'il faudrait,
-prénom facultatif). À côté du formulaire, la liste **« Déjà proposé »** montre les idées en attente
-ou acceptées (titre, extrait, statut — jamais le prénom ni les besoins). Les organisateurs gèrent les
+Sur la **page d'accueil**, sous les événements, la section **« Idées des résidents »** liste les idées
+en attente ou acceptées (titre, extrait, statut — jamais le prénom ni les besoins). Le bouton
+**« Proposer une idée »** ouvre le formulaire sur place (titre, détails, quand, ce qu'il faudrait,
+prénom facultatif). L'ancien lien `#/propose` mène à l'accueil, formulaire ouvert. Les organisateurs gèrent les
 propositions dans Organiser → Propositions : refuser (l'idée disparaît de la liste publique),
 supprimer, ou **Créer l'événement** (éditeur pré-rempli). Limite : 3 propositions / 24 h par appareil, 10 / heure par connexion.
 

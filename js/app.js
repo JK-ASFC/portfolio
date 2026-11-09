@@ -152,6 +152,7 @@
   let currentFilter = "upcoming";
   async function renderHome() {
     LEONE_EXT.renderHomeNotices(ctx);
+    renderProposalList();
     const [events, stats] = await Promise.all([Store.listEvents(), Store.stats()]);
     const sorted = events.slice().sort(sortByStart);
     const upcoming = sorted.filter((e) => !isPast(e));
@@ -863,9 +864,8 @@
     let list = [];
     try { list = await Store.listPublicProposals(); } catch (e) { if (!e.code) console.error(e); }
     box.innerHTML = `
-      <h2>${esc(t("prop.listTitle"))} <span class="going-count">· ${list.length}</span></h2>
-      <p class="card-meta">${esc(t("prop.listHint"))}</p>
-      ${list.length ? `<ul class="idea-list">${list.map((p) => `
+      <p class="card-meta ideas-hint">${esc(t("prop.listHint"))}</p>
+      ${list.length ? `<ul class="idea-grid">${list.map((p) => `
         <li class="idea">
           <div class="idea-head">
             <strong>${esc(p.title)}</strong>
@@ -874,18 +874,21 @@
           ${p.description ? `<p>${esc(p.description)}${p.description.length >= 200 ? "…" : ""}</p>` : ""}
           <span class="idea-date">${esc(new Date(p.createdAt).toLocaleDateString(locale(), { day: "numeric", month: "short" }))}</span>
         </li>`).join("")}</ul>`
-      : `<p class="card-meta" style="margin-top:12px">${esc(t("prop.listEmpty"))}</p>`}`;
+      : `<div class="empty">${esc(t("prop.listEmpty"))}</div>`}`;
   }
 
-  function renderPropose() {
-    $("#proposeRoot").innerHTML = `
-      <div class="propose-layout">
-        <div id="propMain"></div>
-        <aside class="panel" id="propList" aria-live="polite"></aside>
-      </div>`;
-    renderProposeForm();
-    renderProposalList();
+  /** Ouvre / ferme le formulaire de proposition sur l'accueil. */
+  function setIdeaForm(open, focus) {
+    const main = $("#propMain"), btn = $("#ideaToggle");
+    if (!main || !btn) return;
+    main.hidden = !open;
+    btn.setAttribute("aria-expanded", String(open));
+    if (open) {
+      if (!$("#propForm")) renderProposeForm();
+      if (focus) { $("#ideas").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => { const f = $("#p_title"); if (f) f.focus({ preventScroll: true }); }, 400); }
+    }
   }
+  $("#ideaToggle").addEventListener("click", () => setIdeaForm($("#propMain").hidden, true));
 
   function renderProposeForm() {
     const root = $("#propMain");
@@ -899,13 +902,18 @@
         </div>
         <div class="field"><label for="p_needs">${esc(t("prop.needs"))}</label><input type="text" id="p_needs" name="pneeds" maxlength="300" placeholder="${esc(t("prop.needsPh"))}"><small>🔒 ${esc(t("prop.nameHint"))}</small></div>
         <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-        <div class="btn-row"><button class="btn btn-primary" type="submit">${esc(t("prop.send"))}</button></div>
+        <p class="card-meta">${esc(t("prop.lead"))}</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" type="submit">${esc(t("prop.send"))}</button>
+          <button class="btn" type="button" id="propCancel">${esc(t("form.cancelEdit"))}</button>
+        </div>
       </form>`;
+    $("#propCancel").onclick = () => { root.innerHTML = ""; setIdeaForm(false); $("#ideaToggle").focus(); };
     const form = $("#propForm");
     const shownAt = Date.now();
     const thanks = () => {
       root.innerHTML = `<div class="panel success"><span class="big">💡</span><h2>${esc(t("prop.thanksT"))}</h2><p>${esc(t("prop.thanksP"))}</p><button class="btn" id="propAgain">${esc(t("prop.another"))}</button></div>`;
-      $("#propAgain").onclick = renderProposeForm;
+      $("#propAgain").onclick = () => { renderProposeForm(); $("#p_title").focus(); };
       renderProposalList();
     };
     form.addEventListener("submit", async (e) => {
@@ -1120,7 +1128,8 @@
     let parts;
     try { parts = h.replace(/^#\/?/, "").split("/").map(decodeURIComponent); } catch (e) { parts = []; }
     const [name = "", sub, id] = parts;
-    const v = ["event", "admin", "propose", "pot", "infos", "inventory", "guide"].includes(name) ? name : "home";
+    const openIdea = name === "propose"; // ancien lien « Proposer » : accueil + formulaire ouvert
+    const v = ["event", "admin", "pot", "infos", "inventory", "guide"].includes(name) ? name : "home";
     setMore(false);
 
     $$(".view").forEach((s) => (s.hidden = s.dataset.view !== v));
@@ -1137,7 +1146,6 @@
       if (v === "home") await renderHome();
       if (v === "event") await renderEvent(sub);
       if (v === "admin") await renderAdmin(sub, id);
-      if (v === "propose") renderPropose();
       if (v === "pot") await renderPot();
       if (v === "infos") await LEONE_EXT.renderInfos(ctx);
       if (v === "inventory") await LEONE_EXT.renderInventory(ctx);
@@ -1150,6 +1158,7 @@
       if (box && err.code === "DB_OUTDATED") box.innerHTML = `<div class="empty">⚙️ ${esc(errMsg(err))}</div>`;
       else toast(errMsg(err));
     }
+    if (openIdea) setIdeaForm(true, true);
     const h1 = v === "event" ? $("#eventDetail h1") : null;
     document.title = h1 ? `${h1.textContent} · LEONE` : t("meta.title");
     observeReveals();
