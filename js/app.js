@@ -114,6 +114,7 @@
   let countdownTimer;
   let currentFilter = "upcoming";
   async function renderHome() {
+    LEONE_EXT.renderHomeNotices(ctx);
     const [events, stats] = await Promise.all([Store.listEvents(), Store.stats()]);
     const sorted = events.slice().sort(sortByStart);
     const upcoming = sorted.filter((e) => !isPast(e));
@@ -407,6 +408,7 @@
     if (sub === "responses") return renderResponses(id);
     if (sub === "proposals") return renderAdminProposals();
     if (sub === "pot") return renderAdminPot();
+    if (sub === "infos") return LEONE_EXT.renderAdminInfos(ctx, await adminTabs("infos"));
 
     const [events, stats] = await Promise.all([Store.listEvents(), Store.stats()]);
     const list = events.slice().sort(sortByStart).reverse();
@@ -902,6 +904,8 @@
       ${tab("events", "#/admin", t("adm.tabEvents"))}
       ${tab("proposals", "#/admin/proposals", t("adm.tabProposals") + (n ? ` (${n})` : ""))}
       ${tab("pot", "#/admin/pot", t("adm.tabPot"))}
+      ${tab("infos", "#/admin/infos", t("adm.tabInfos"))}
+      ${tab("inventory", "#/inventory", t("adm.tabInventory"))}
     </nav>`;
   }
 
@@ -1061,6 +1065,17 @@
     };
   }
 
+  /* ---------------- Outils partagés avec js/residence.js ---------------- */
+  const ctx = { t, tp, esc, loc, toast, locale, $, $$, errMsg, observeReveals };
+
+  /* ---------------- Menu « Plus » ---------------- */
+  const moreBtn = $("#moreBtn"), moreMenu = $("#moreMenu");
+  const MORE_VIEWS = ["inventory", "guide", "admin"];
+  function setMore(open) { moreMenu.hidden = !open; moreBtn.setAttribute("aria-expanded", String(open)); }
+  moreBtn.addEventListener("click", (e) => { e.stopPropagation(); setMore(moreMenu.hidden); if (!moreMenu.hidden) $("a", moreMenu).focus(); });
+  document.addEventListener("click", (e) => { if (!moreMenu.hidden && !e.target.closest(".nav-more")) setMore(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !moreMenu.hidden) { setMore(false); moreBtn.focus(); } });
+
   /* ---------------- Routeur ---------------- */
   async function route(keepScroll) {
     const h = location.hash;
@@ -1068,7 +1083,8 @@
     let parts;
     try { parts = h.replace(/^#\/?/, "").split("/").map(decodeURIComponent); } catch (e) { parts = []; }
     const [name = "", sub, id] = parts;
-    const v = ["event", "admin", "propose", "pot"].includes(name) ? name : "home";
+    const v = ["event", "admin", "propose", "pot", "infos", "inventory", "guide"].includes(name) ? name : "home";
+    setMore(false);
 
     $$(".view").forEach((s) => (s.hidden = s.dataset.view !== v));
     $$("[data-nav]").forEach((a) => {
@@ -1076,6 +1092,7 @@
       a.classList.toggle("is-active", on);
       if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
+    moreBtn.classList.toggle("is-active", MORE_VIEWS.includes(v));
     if (keepScroll !== true) window.scrollTo(0, 0);
     if (v !== "home") clearInterval(countdownTimer);
 
@@ -1085,6 +1102,9 @@
       if (v === "admin") await renderAdmin(sub, id);
       if (v === "propose") renderPropose();
       if (v === "pot") await renderPot();
+      if (v === "infos") await LEONE_EXT.renderInfos(ctx);
+      if (v === "inventory") await LEONE_EXT.renderInventory(ctx);
+      if (v === "guide") LEONE_EXT.renderGuide(ctx);
     } catch (err) {
       console.error(err);
       toast(errMsg(err));
@@ -1120,5 +1140,5 @@
 
   applyStatic();
   window.addEventListener("hashchange", () => route());
-  route();
+  route().then(() => LEONE_EXT.showPopups(ctx));
 })();

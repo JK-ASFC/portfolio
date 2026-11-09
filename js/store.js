@@ -16,6 +16,14 @@
   const LS_PROPOSALS = "leone.proposals.v1";
   const LS_POT = "leone.pot.v1";
   const LS_POT_ENTRIES = "leone.potEntries.v1";
+  const LS_INV_GROUPS = "leone.invGroups.v1";
+  const LS_INV_ITEMS = "leone.invItems.v1";
+  const LS_ANNOUNCE = "leone.announcements.v1";
+  const DEFAULT_GROUPS = [
+    { id: "frigo", name: "Frigo", name_en: "Fridge", emoji: "🧊", sort: 1 },
+    { id: "tiroir", name: "Tiroir", name_en: "Drawer", emoji: "🗄️", sort: 2 },
+    { id: "lave-vaisselle", name: "Lave-vaisselle", name_en: "Dishwasher", emoji: "🍽️", sort: 3 }
+  ];
   const hashLocal = (s) => s.slice(0, 16); // mode démo : pas besoin d'empreinte réelle
   const SS_SESSION = "leone.session";
 
@@ -562,11 +570,116 @@
       await this.removeReceipt(entry.receiptPath);
     },
 
+    /* ----- Inventaire ----- */
+    async getInventory() {
+      if (!REMOTE) {
+        const groups = local.read(LS_INV_GROUPS, null) || DEFAULT_GROUPS;
+        return { groups: groups.slice().sort((a, b) => a.sort - b.sort), items: local.read(LS_INV_ITEMS, []) };
+      }
+      const [groups, items] = await Promise.all([
+        sb("inventory_groups?select=id,name,name_en,emoji,sort&order=sort.asc,created_at.asc"),
+        sb("inventory_items?select=id,group_id,name,name_en,qty,updated_at&order=name.asc")
+      ]);
+      return { groups, items: items.map((i) => ({ id: i.id, groupId: i.group_id, name: i.name, name_en: i.name_en, qty: i.qty, updatedAt: i.updated_at })) };
+    },
+
+    async addInventoryGroup(g) {
+      const name = String(g.name || "").trim().slice(0, 40);
+      if (!name) throw fail("INVALID");
+      const slug = name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "groupe";
+      const row = { id: `${slug}-${uid().replace(/-/g, "").slice(0, 4)}`, name, name_en: String(g.name_en || "").trim().slice(0, 40), emoji: String(g.emoji || "📦").trim().slice(0, 8) || "📦", sort: Date.now() % 100000 };
+      if (!REMOTE) {
+        const groups = local.read(LS_INV_GROUPS, null) || DEFAULT_GROUPS.slice();
+        groups.push(row); local.write(LS_INV_GROUPS, groups); return row;
+      }
+      await sb("inventory_groups", { method: "POST", body: JSON.stringify(row) }, true);
+      return row;
+    },
+
+    async deleteInventoryGroup(id) {
+      if (!REMOTE) {
+        local.write(LS_INV_GROUPS, (local.read(LS_INV_GROUPS, null) || DEFAULT_GROUPS).filter((g) => g.id !== id));
+        local.write(LS_INV_ITEMS, local.read(LS_INV_ITEMS, []).filter((i) => i.groupId !== id));
+        return;
+      }
+      await sb(`inventory_groups?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }, true);
+    },
+
+    async addInventoryItem(it) {
+      const row = {
+        groupId: it.groupId, name: String(it.name || "").trim().slice(0, 60), name_en: String(it.name_en || "").trim().slice(0, 60),
+        qty: Math.max(0, Math.min(999, parseInt(it.qty, 10) || 1))
+      };
+      if (!row.name || !row.groupId) throw fail("INVALID");
+      if (!REMOTE) {
+        const items = local.read(LS_INV_ITEMS, []);
+        items.push({ ...row, id: uid(), updatedAt: new Date().toISOString() });
+        local.write(LS_INV_ITEMS, items); return;
+      }
+      await sb("inventory_items", { method: "POST", body: JSON.stringify({ group_id: row.groupId, name: row.name, name_en: row.name_en, qty: row.qty }) }, true);
+    },
+
+    async setInventoryQty(id, qty) {
+      qty = Math.max(0, Math.min(999, parseInt(qty, 10) || 0));
+      if (!REMOTE) {
+        const items = local.read(LS_INV_ITEMS, []);
+        const x = items.find((i) => i.id === id);
+        if (x) { x.qty = qty; x.updatedAt = new Date().toISOString(); local.write(LS_INV_ITEMS, items); }
+        return;
+      }
+      await sb(`inventory_items?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ qty, updated_at: new Date().toISOString() }) }, true);
+    },
+
+    async deleteInventoryItem(id) {
+      if (!REMOTE) { local.write(LS_INV_ITEMS, local.read(LS_INV_ITEMS, []).filter((i) => i.id !== id)); return; }
+      await sb(`inventory_items?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }, true);
+    },
+
+    /* ----- Informations (messages permanents / pop-up) ----- */
+    /** Messages en cours ; all=true (organisateurs) : tous, y compris programmés ou expirés. */
+    async listAnnouncements(all = false) {
+      const now = Date.now();
+      const active = (a) => new Date(a.startsAt).getTime() <= now && (!a.endsAt || new Date(a.endsAt).getTime() > now);
+      let rows;
+      if (!REMOTE) rows = local.read(LS_ANNOUNCE, []);
+      else {
+        const raw = await sb("announcements?select=*&order=important.desc,created_at.desc", {}, all);
+        rows = raw.map((a) => ({ id: a.id, kind: a.kind, important: a.important, title: a.title, title_en: a.title_en, body: a.body, body_en: a.body_en, startsAt: a.starts_at, endsAt: a.ends_at, createdAt: a.created_at }));
+      }
+      rows = rows.slice().sort((a, b) => (b.important - a.important) || (b.createdAt || "").localeCompare(a.createdAt || ""));
+      return all ? rows : rows.filter(active);
+    },
+
+    async saveAnnouncement(a) {
+      const row = {
+        kind: a.kind === "popup" ? "popup" : "permanent", important: Boolean(a.important),
+        title: String(a.title || "").trim().slice(0, 100), title_en: String(a.title_en || "").trim().slice(0, 100),
+        body: String(a.body || "").trim().slice(0, 2000), body_en: String(a.body_en || "").trim().slice(0, 2000),
+        startsAt: a.startsAt || new Date().toISOString(), endsAt: a.endsAt || null
+      };
+      if (!row.title) throw fail("INVALID");
+      if (row.endsAt && new Date(row.endsAt) <= new Date(row.startsAt)) throw fail("INVALID");
+      if (!REMOTE) {
+        const all = local.read(LS_ANNOUNCE, []);
+        const i = all.findIndex((x) => x.id === a.id);
+        if (i >= 0) all[i] = { ...all[i], ...row }; else all.push({ ...row, id: uid(), createdAt: new Date().toISOString() });
+        local.write(LS_ANNOUNCE, all); return;
+      }
+      const body = JSON.stringify({ kind: row.kind, important: row.important, title: row.title, title_en: row.title_en, body: row.body, body_en: row.body_en, starts_at: row.startsAt, ends_at: row.endsAt });
+      if (a.id) await sb(`announcements?id=eq.${encodeURIComponent(a.id)}`, { method: "PATCH", body }, true);
+      else await sb("announcements", { method: "POST", body }, true);
+    },
+
+    async deleteAnnouncement(id) {
+      if (!REMOTE) { local.write(LS_ANNOUNCE, local.read(LS_ANNOUNCE, []).filter((x) => x.id !== id)); return; }
+      await sb(`announcements?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }, true);
+    },
+
     resetDemo() {
       if (REMOTE) return;
       local.write(LS_EVENTS, seedEvents());
       local.write(LS_RESP, []);
-      [LS_PROPOSALS, LS_POT, LS_POT_ENTRIES].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
+      [LS_PROPOSALS, LS_POT, LS_POT_ENTRIES, LS_INV_GROUPS, LS_INV_ITEMS, LS_ANNOUNCE].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
     },
 
     uid

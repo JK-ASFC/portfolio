@@ -24,9 +24,17 @@
     </a>
     <nav class="nav" id="nav" data-i18n-aria="nav.label">
       <a href="#/" data-nav="home"><span class="nav-ico" aria-hidden="true">📅</span><span data-i18n="nav.events"></span></a>
+      <a href="#/infos" data-nav="infos"><span class="nav-ico" aria-hidden="true">📢</span><span data-i18n="nav.infos"></span></a>
       <a href="#/propose" data-nav="propose"><span class="nav-ico" aria-hidden="true">💡</span><span data-i18n="nav.propose"></span></a>
       <a href="#/pot" data-nav="pot"><span class="nav-ico" aria-hidden="true">🪙</span><span data-i18n="nav.pot"></span></a>
-      <a href="#/admin" data-nav="admin" class="nav-admin"><span class="nav-ico" aria-hidden="true">🔐</span><span data-i18n="nav.admin"></span></a>
+      <div class="nav-more">
+        <button type="button" class="nav-more-btn" id="moreBtn" aria-expanded="false" aria-controls="moreMenu"><span class="nav-ico" aria-hidden="true">☰</span><span data-i18n="nav.more"></span><span class="caret" aria-hidden="true">▾</span></button>
+        <div class="more-menu" id="moreMenu" hidden>
+          <a href="#/inventory" data-nav="inventory"><span aria-hidden="true">📦</span><span data-i18n="nav.inventory"></span></a>
+          <a href="#/guide" data-nav="guide"><span aria-hidden="true">📖</span><span data-i18n="nav.guide"></span></a>
+          <a href="#/admin" data-nav="admin"><span aria-hidden="true">🔐</span><span data-i18n="nav.admin"></span></a>
+        </div>
+      </div>
     </nav>
     <div class="top-actions">
       <div class="lang" role="group" data-i18n-aria="lang.label">
@@ -60,6 +68,7 @@
       </div>
 
       <section class="block">
+        <div id="homeNotices"></div>
         <div class="list-head">
           <h2 data-i18n="home.title"></h2>
           <div class="filters" id="filters" role="tablist" data-i18n-aria="filter.aria">
@@ -93,6 +102,32 @@
       <div class="block" id="potRoot"></div>
     </section>
 
+    <!-- ============ INFOS ============ -->
+    <section class="view" data-view="infos" hidden>
+      <div class="page-head">
+        <h1 data-i18n="infos.title"></h1>
+        <p class="lead" data-i18n="infos.lead"></p>
+      </div>
+      <div class="block narrow" id="infosRoot"></div>
+    </section>
+
+    <!-- ============ INVENTAIRE ============ -->
+    <section class="view" data-view="inventory" hidden>
+      <div class="page-head">
+        <h1 data-i18n="inv.title"></h1>
+        <p class="lead" data-i18n="inv.lead"></p>
+      </div>
+      <div class="block" id="inventoryRoot"></div>
+    </section>
+
+    <!-- ============ MODE D'EMPLOI ============ -->
+    <section class="view" data-view="guide" hidden>
+      <div class="page-head">
+        <h1 data-i18n="guide.title"></h1>
+      </div>
+      <div class="block narrow" id="guideRoot"></div>
+    </section>
+
     <!-- ============ ORGANISER ============ -->
     <section class="view" data-view="admin" hidden>
       <div class="page-head">
@@ -114,6 +149,7 @@
   <script src="js/config.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/residence.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
