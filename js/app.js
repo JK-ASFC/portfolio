@@ -1247,6 +1247,18 @@
   if (/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/.test(wa)) {
     $$(".wa-link").forEach((a) => { a.href = wa; a.hidden = false; });
   }
+  // Groupe Instagram : uniquement des liens Instagram officiels (invitation ig.me ou instagram.com)
+  const ig = String((window.LEONE_CONFIG || {}).instagramGroupUrl || "");
+  if (/^https:\/\/(ig\.me|(www\.)?instagram\.com)\/[A-Za-z0-9_./?=-]+$/.test(ig)) {
+    $$(".ig-link").forEach((a) => { a.href = ig; a.hidden = false; });
+  }
+  // Créateur du site
+  const creator = String((window.LEONE_CONFIG || {}).creatorInstagram || "").replace(/^@/, "");
+  if (/^[A-Za-z0-9_.]{1,30}$/.test(creator)) {
+    $("#creditLink").href = "https://www.instagram.com/" + creator + "/";
+    $("#creditName").textContent = "@" + creator;
+    $("#creditLine").hidden = false;
+  }
 
   window.addEventListener("hashchange", () => route());
   LEONE_COMM.initPwa(ctx);
