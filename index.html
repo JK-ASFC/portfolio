@@ -25,7 +25,6 @@
     <nav class="nav" id="nav" data-i18n-aria="nav.label">
       <a href="#/" data-nav="home"><span class="nav-ico" aria-hidden="true">📅</span><span data-i18n="nav.events"></span></a>
       <a href="#/infos" data-nav="infos"><span class="nav-ico" aria-hidden="true">📢</span><span data-i18n="nav.infos"></span></a>
-      <a href="#/propose" data-nav="propose"><span class="nav-ico" aria-hidden="true">💡</span><span data-i18n="nav.propose"></span></a>
       <a href="#/pot" data-nav="pot"><span class="nav-ico" aria-hidden="true">🪙</span><span data-i18n="nav.pot"></span></a>
       <div class="nav-more">
         <button type="button" class="nav-more-btn" id="moreBtn" aria-expanded="false" aria-controls="moreMenu"><span class="nav-ico" aria-hidden="true">☰</span><span data-i18n="nav.more"></span><span class="caret" aria-hidden="true">▾</span></button>
@@ -37,10 +36,11 @@
       </div>
     </nav>
     <div class="top-actions">
-      <div class="lang" role="group" data-i18n-aria="lang.label">
-        <button type="button" data-lang="fr" lang="fr" aria-label="Français">FR</button>
-        <button type="button" data-lang="en" lang="en" aria-label="English">EN</button>
-      </div>
+      <label class="lang">
+        <span class="lang-ico" aria-hidden="true">🌐</span>
+        <span class="sr-only" data-i18n="lang.label"></span>
+        <select id="langSelect"></select>
+      </label>
     </div>
   </header>
 
@@ -78,20 +78,20 @@
         </div>
         <div class="cards" id="eventList"></div>
       </section>
+
+      <section class="block ideas-block" id="ideas" aria-labelledby="ideasTitle">
+        <div class="list-head">
+          <h2 id="ideasTitle" data-i18n="prop.homeTitle"></h2>
+          <button type="button" class="btn btn-primary btn-sm" id="ideaToggle" aria-expanded="false" aria-controls="propMain">💡 <span data-i18n="prop.cta"></span></button>
+        </div>
+        <div id="propMain" hidden></div>
+        <div id="propList" aria-live="polite"></div>
+      </section>
     </section>
 
     <!-- ============ DÉTAIL ÉVÉNEMENT ============ -->
     <section class="view" data-view="event" hidden>
       <div id="eventDetail"></div>
-    </section>
-
-    <!-- ============ PROPOSER ============ -->
-    <section class="view" data-view="propose" hidden>
-      <div class="page-head">
-        <h1 data-i18n="prop.title"></h1>
-        <p class="lead" data-i18n="prop.lead"></p>
-      </div>
-      <div class="block" id="proposeRoot"></div>
     </section>
 
     <!-- ============ POT COMMUN ============ -->

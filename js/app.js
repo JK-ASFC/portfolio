@@ -12,16 +12,45 @@
   const EMPTY_STATS = { headcount: 0, replies: 0, brought: {}, attendees: [] };
 
   /* ---------------- Langue ---------------- */
+  // Langues disponibles : js/i18n.js (fr, en) + un fichier par langue dans js/lang/, chargé à la demande.
+  const LANGS = window.LEONE_LANGS;
   const LANG_KEY = "leone.lang";
-  let lang = (() => {
-    try { const s = localStorage.getItem(LANG_KEY); if (s === "fr" || s === "en") return s; } catch (e) { /* ignore */ }
-    return (navigator.language || "fr").toLowerCase().startsWith("fr") ? "fr" : "en";
-  })();
-  const locale = () => (lang === "fr" ? "fr-FR" : "en-GB");
+  const langInfo = (code) => LANGS.find((l) => l.code === code) || LANGS[0];
 
+  /** Langue du système : première langue préférée de l'appareil qu'on sait afficher. */
+  function detectLang() {
+    const prefs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "fr"]).map((x) => String(x).toLowerCase());
+    for (const tag of prefs) {
+      const exact = LANGS.find((l) => l.code.toLowerCase() === tag);
+      if (exact) return exact.code;
+      const base = LANGS.find((l) => l.code.toLowerCase() === tag.split("-")[0]);
+      if (base) return base.code;
+    }
+    return prefs.length ? "en" : "fr"; // langue inconnue : l'anglais est le plus souvent compris
+  }
+  let lang = (() => {
+    try { const s = localStorage.getItem(LANG_KEY); if (s && LANGS.some((l) => l.code === s)) return s; } catch (e) { /* ignore */ }
+    return detectLang();
+  })();
+  const locale = () => langInfo(lang).locale;
+
+  /** Charge js/lang/<code>.js si besoin (script du site, autorisé par la CSP). */
+  function loadLang(code) {
+    if (window.I18N[code]) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      const s = document.createElement("script");
+      s.src = `js/lang/${encodeURIComponent(code)}.js`;
+      s.onload = () => resolve(Boolean(window.I18N[code]));
+      s.onerror = () => resolve(false);
+      document.head.appendChild(s);
+    });
+  }
+
+  // texte : langue choisie → anglais → français
   function t(key, vars = {}) {
-    const dict = window.I18N[lang] || {};
-    const s = key in dict ? dict[key] : (window.I18N.fr[key] ?? key);
+    const chain = [window.I18N[lang], lang !== "fr" ? window.I18N.en : null, window.I18N.fr];
+    let s = key;
+    for (const d of chain) if (d && key in d) { s = d[key]; break; }
     if (typeof s !== "string") return s;
     return s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : `{${k}}`));
   }
@@ -29,27 +58,35 @@
     const plural = lang === "fr" ? n > 1 : n !== 1;
     return t(`${key}_${plural ? "pl" : "sg"}`, { n, ...vars });
   }
-  const loc = (obj, field) => (lang === "en" && obj && obj[`${field}_en`]) || (obj ? obj[field] : "") || "";
-  const locOpts = (q) => (lang === "en" && q.options_en && q.options_en.length === (q.options || []).length ? q.options_en : q.options || []);
+  // contenu écrit par les organisateurs (FR + EN facultatif) : version anglaise pour toutes les autres langues
+  const useEn = () => lang !== "fr";
+  const loc = (obj, field) => (useEn() && obj && obj[`${field}_en`]) || (obj ? obj[field] : "") || "";
+  const locOpts = (q) => (useEn() && q.options_en && q.options_en.length === (q.options || []).length ? q.options_en : q.options || []);
   const errMsg = (err) => t(`err.${err && err.code}`) !== `err.${err && err.code}` ? t(`err.${err.code}`) : t("load.error");
+
+  const langSelect = $("#langSelect");
+  langSelect.innerHTML = LANGS.map((l) => `<option value="${esc(l.code)}" lang="${esc(l.code)}">${esc(l.name)}</option>`).join("");
 
   function applyStatic() {
     document.documentElement.lang = lang;
+    document.documentElement.dir = langInfo(lang).dir || "ltr";
     $$("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
     $$("[data-i18n-html]").forEach((el) => (el.innerHTML = t(el.dataset.i18nHtml)));
     $$("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
-    $$(".lang [data-lang]").forEach((b) => {
-      b.classList.toggle("is-active", b.dataset.lang === lang);
-      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
-    });
+    langSelect.value = lang;
   }
-  $$(".lang [data-lang]").forEach((b) => b.addEventListener("click", () => {
-    if (b.dataset.lang === lang) return;
-    lang = b.dataset.lang;
+  langSelect.addEventListener("change", async () => {
+    const next = langSelect.value;
+    if (next === lang) return;
+    langSelect.disabled = true;
+    const ok = await loadLang(next);
+    langSelect.disabled = false;
+    if (!ok) { langSelect.value = lang; toast(t("load.error")); return; }
+    lang = next;
     try { localStorage.setItem(LANG_KEY, lang); } catch (e) { /* ignore */ }
     applyStatic();
     route(true);
-  }));
+  });
 
   /* ---------------- Mémo local des événements auxquels j'ai répondu (affichage seulement) ---------------- */
   const ANS_KEY = "leone.answered";
@@ -115,6 +152,7 @@
   let currentFilter = "upcoming";
   async function renderHome() {
     LEONE_EXT.renderHomeNotices(ctx);
+    renderProposalList();
     const [events, stats] = await Promise.all([Store.listEvents(), Store.stats()]);
     const sorted = events.slice().sort(sortByStart);
     const upcoming = sorted.filter((e) => !isPast(e));
@@ -826,29 +864,65 @@
     let list = [];
     try { list = await Store.listPublicProposals(); } catch (e) { if (!e.code) console.error(e); }
     box.innerHTML = `
-      <h2>${esc(t("prop.listTitle"))} <span class="going-count">· ${list.length}</span></h2>
-      <p class="card-meta">${esc(t("prop.listHint"))}</p>
-      ${list.length ? `<ul class="idea-list">${list.map((p) => `
+      <p class="card-meta ideas-hint">${esc(t("prop.listHint"))}</p>
+      ${list.length ? `<ul class="idea-grid">${list.map((p) => `
         <li class="idea">
           <div class="idea-head">
             <strong>${esc(p.title)}</strong>
             <span class="tag tag-${esc(p.status)}">${esc(t(p.status === "accepted" ? "prop.stAccepted" : "prop.stPending"))}</span>
           </div>
           ${p.description ? `<p>${esc(p.description)}${p.description.length >= 200 ? "…" : ""}</p>` : ""}
-          <span class="idea-date">${esc(new Date(p.createdAt).toLocaleDateString(locale(), { day: "numeric", month: "short" }))}</span>
+          <div class="idea-foot">
+            <span class="idea-date">${esc(new Date(p.createdAt).toLocaleDateString(locale(), { day: "numeric", month: "short" }))}</span>
+            <span class="idea-votes" role="group" aria-label="${esc(t("prop.votes"))}">${voteButtons(p)}</span>
+          </div>
         </li>`).join("")}</ul>`
-      : `<p class="card-meta" style="margin-top:12px">${esc(t("prop.listEmpty"))}</p>`}`;
+      : `<div class="empty">${esc(t("prop.listEmpty"))}</div>`}`;
+
+    // 👍 / 👎 : recliquer sur son vote le retire ; affichage immédiat puis confirmation par la base
+    let busy = false;
+    box.onclick = async (e) => {
+      const btn = e.target.closest("[data-vote]");
+      if (!btn || busy) return;
+      const p = list.find((x) => x.id === btn.dataset.id);
+      if (!p) return;
+      const v = Number(btn.dataset.vote);
+      const next = p.myVote === v ? 0 : v;
+      const before = { likes: p.likes, dislikes: p.dislikes, myVote: p.myVote };
+      if (p.myVote === 1) p.likes--; else if (p.myVote === -1) p.dislikes--;
+      if (next === 1) p.likes++; else if (next === -1) p.dislikes++;
+      p.myVote = next;
+      const group = btn.closest(".idea-votes");
+      group.innerHTML = voteButtons(p);
+      busy = true;
+      try {
+        Object.assign(p, await Store.voteProposal(p.id, next));
+        group.innerHTML = voteButtons(p);
+      } catch (err) {
+        Object.assign(p, before);
+        group.innerHTML = voteButtons(p);
+        toast(errMsg(err));
+      } finally { busy = false; }
+    };
+  }
+  function voteButtons(p) {
+    return `
+      <button type="button" class="vote up ${p.myVote === 1 ? "is-on" : ""}" data-vote="1" data-id="${esc(p.id)}" aria-pressed="${p.myVote === 1}" aria-label="${esc(t("prop.like"))} (${p.likes})"><span aria-hidden="true">👍</span> <span class="vote-n">${p.likes}</span></button>
+      <button type="button" class="vote down ${p.myVote === -1 ? "is-on" : ""}" data-vote="-1" data-id="${esc(p.id)}" aria-pressed="${p.myVote === -1}" aria-label="${esc(t("prop.dislike"))} (${p.dislikes})"><span aria-hidden="true">👎</span> <span class="vote-n">${p.dislikes}</span></button>`;
   }
 
-  function renderPropose() {
-    $("#proposeRoot").innerHTML = `
-      <div class="propose-layout">
-        <div id="propMain"></div>
-        <aside class="panel" id="propList" aria-live="polite"></aside>
-      </div>`;
-    renderProposeForm();
-    renderProposalList();
+  /** Ouvre / ferme le formulaire de proposition sur l'accueil. */
+  function setIdeaForm(open, focus) {
+    const main = $("#propMain"), btn = $("#ideaToggle");
+    if (!main || !btn) return;
+    main.hidden = !open;
+    btn.setAttribute("aria-expanded", String(open));
+    if (open) {
+      if (!$("#propForm")) renderProposeForm();
+      if (focus) { $("#ideas").scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => { const f = $("#p_title"); if (f) f.focus({ preventScroll: true }); }, 400); }
+    }
   }
+  $("#ideaToggle").addEventListener("click", () => setIdeaForm($("#propMain").hidden, true));
 
   function renderProposeForm() {
     const root = $("#propMain");
@@ -862,13 +936,18 @@
         </div>
         <div class="field"><label for="p_needs">${esc(t("prop.needs"))}</label><input type="text" id="p_needs" name="pneeds" maxlength="300" placeholder="${esc(t("prop.needsPh"))}"><small>🔒 ${esc(t("prop.nameHint"))}</small></div>
         <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-        <div class="btn-row"><button class="btn btn-primary" type="submit">${esc(t("prop.send"))}</button></div>
+        <p class="card-meta">${esc(t("prop.lead"))}</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" type="submit">${esc(t("prop.send"))}</button>
+          <button class="btn" type="button" id="propCancel">${esc(t("form.cancelEdit"))}</button>
+        </div>
       </form>`;
+    $("#propCancel").onclick = () => { root.innerHTML = ""; setIdeaForm(false); $("#ideaToggle").focus(); };
     const form = $("#propForm");
     const shownAt = Date.now();
     const thanks = () => {
       root.innerHTML = `<div class="panel success"><span class="big">💡</span><h2>${esc(t("prop.thanksT"))}</h2><p>${esc(t("prop.thanksP"))}</p><button class="btn" id="propAgain">${esc(t("prop.another"))}</button></div>`;
-      $("#propAgain").onclick = renderProposeForm;
+      $("#propAgain").onclick = () => { renderProposeForm(); $("#p_title").focus(); };
       renderProposalList();
     };
     form.addEventListener("submit", async (e) => {
@@ -927,6 +1006,7 @@
               ${p.whenText ? `${esc(t("ap.when", { x: p.whenText }))}<br>` : ""}
               ${p.needs ? `${esc(t("ap.needs", { x: p.needs }))}<br>` : ""}
               ${esc(t("ap.by", { x: p.name || t("ap.anon") }))} · ${esc(new Date(p.createdAt).toLocaleDateString(locale()))}${p.lang === "en" ? " · EN" : ""}
+              · <strong>👍 ${p.likes || 0} · 👎 ${p.dislikes || 0}</strong>
             </p>
             <div class="admin-actions">
               ${p.status !== "accepted" ? `<button class="btn btn-sm btn-primary" data-pcreate="${esc(p.id)}">${esc(t("ap.create"))}</button>` : ""}
@@ -1083,7 +1163,8 @@
     let parts;
     try { parts = h.replace(/^#\/?/, "").split("/").map(decodeURIComponent); } catch (e) { parts = []; }
     const [name = "", sub, id] = parts;
-    const v = ["event", "admin", "propose", "pot", "infos", "inventory", "guide"].includes(name) ? name : "home";
+    const openIdea = name === "propose"; // ancien lien « Proposer » : accueil + formulaire ouvert
+    const v = ["event", "admin", "pot", "infos", "inventory", "guide"].includes(name) ? name : "home";
     setMore(false);
 
     $$(".view").forEach((s) => (s.hidden = s.dataset.view !== v));
@@ -1100,7 +1181,6 @@
       if (v === "home") await renderHome();
       if (v === "event") await renderEvent(sub);
       if (v === "admin") await renderAdmin(sub, id);
-      if (v === "propose") renderPropose();
       if (v === "pot") await renderPot();
       if (v === "infos") await LEONE_EXT.renderInfos(ctx);
       if (v === "inventory") await LEONE_EXT.renderInventory(ctx);
@@ -1113,6 +1193,7 @@
       if (box && err.code === "DB_OUTDATED") box.innerHTML = `<div class="empty">⚙️ ${esc(errMsg(err))}</div>`;
       else toast(errMsg(err));
     }
+    if (openIdea) setIdeaForm(true, true);
     const h1 = v === "event" ? $("#eventDetail h1") : null;
     document.title = h1 ? `${h1.textContent} · LEONE` : t("meta.title");
     observeReveals();
@@ -1142,7 +1223,9 @@
     $$(".wa-link").forEach((a) => { a.href = wa; a.hidden = false; });
   }
 
-  applyStatic();
   window.addEventListener("hashchange", () => route());
-  route().then(() => LEONE_EXT.showPopups(ctx));
+  // langue d'abord (chargée si besoin, repli sur l'anglais), puis la page, puis les messages pop-up
+  loadLang(lang)
+    .then((ok) => { if (!ok) lang = "en"; applyStatic(); return route(); })
+    .then(() => LEONE_EXT.showPopups(ctx));
 })();

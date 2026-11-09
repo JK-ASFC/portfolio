@@ -353,19 +353,80 @@ begin
   return jsonb_build_object('id', rid);
 end;
 $$;
--- Liste publique des idées déjà proposées (sans prénom ni besoins).
+-- ---------- Votes 👍 / 👎 sur les idées ----------
+-- Un vote par appareil et par idée (empreinte du secret de l'appareil, comme pour les réponses).
+create table if not exists public.proposal_votes (
+  proposal_id  uuid not null references public.proposals(id) on delete cascade,
+  device_hash  text not null,
+  value        smallint not null check (value in (-1, 1)),
+  ip_hash      text,
+  created_at   timestamptz not null default now(),
+  primary key (proposal_id, device_hash)
+);
+create index if not exists proposal_votes_ip_idx on public.proposal_votes(ip_hash, created_at);
+alter table public.proposal_votes enable row level security;
+drop policy if exists "proposal votes admin" on public.proposal_votes;
+create policy "proposal votes admin" on public.proposal_votes for all using (public.is_admin()) with check (public.is_admin());
+revoke all on public.proposal_votes from anon;
+
+-- Liste publique des idées déjà proposées (sans prénom ni besoins), avec les votes.
 -- Les propositions refusées ou supprimées par un organisateur disparaissent.
-create or replace function public.public_proposals()
-returns table (id uuid, title text, description text, status text, created_at timestamptz)
+drop function if exists public.public_proposals();
+create or replace function public.public_proposals(p_device text default null)
+returns table (id uuid, title text, description text, status text, created_at timestamptz,
+               likes int, dislikes int, my_vote int)
 language sql stable security definer set search_path = public as $$
-  select p.id, p.title, left(p.description, 200), p.status, p.created_at
+  select p.id, p.title, left(p.description, 200), p.status, p.created_at,
+    (select count(*) from proposal_votes v where v.proposal_id = p.id and v.value = 1)::int,
+    (select count(*) from proposal_votes v where v.proposal_id = p.id and v.value = -1)::int,
+    coalesce((select v.value from proposal_votes v where v.proposal_id = p.id
+              and p_device ~ '^[0-9a-f]{32,128}$' and v.device_hash = public.leone_hash(p_device)), 0)::int
   from proposals p
   where p.status in ('new', 'accepted')
-  order by (p.status = 'accepted') desc, p.created_at desc
+  order by (p.status = 'accepted') desc,
+    ((select coalesce(sum(v.value), 0) from proposal_votes v where v.proposal_id = p.id)) desc,
+    p.created_at desc
   limit 60;
 $$;
-revoke all on function public.public_proposals() from public;
-grant execute on function public.public_proposals() to anon, authenticated;
+revoke all on function public.public_proposals(text) from public;
+grant execute on function public.public_proposals(text) to anon, authenticated;
+
+-- Voter : 1 = 👍, -1 = 👎, 0 = retirer son vote. Erreurs : INVALID, NOT_FOUND, RATE_LIMIT
+create or replace function public.vote_proposal(p_id uuid, p_device text, p_value int)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  dev_hash text;
+  ip text;
+begin
+  if p_device is null or p_device !~ '^[0-9a-f]{32,128}$' or p_value not in (-1, 0, 1) then
+    raise exception 'INVALID';
+  end if;
+  if not exists (select 1 from proposals where id = p_id and status in ('new', 'accepted')) then
+    raise exception 'NOT_FOUND';
+  end if;
+  dev_hash := public.leone_hash(p_device);
+  -- limite : 120 votes / 10 min depuis une même connexion
+  ip := public.leone_client_ip_hash();
+  if ip is not null and (select count(*) from proposal_votes
+      where ip_hash = ip and created_at > now() - interval '10 minutes') >= 120 then
+    raise exception 'RATE_LIMIT';
+  end if;
+  if p_value = 0 then
+    delete from proposal_votes where proposal_id = p_id and device_hash = dev_hash;
+  else
+    insert into proposal_votes (proposal_id, device_hash, value, ip_hash)
+    values (p_id, dev_hash, p_value, ip)
+    on conflict (proposal_id, device_hash) do update set value = excluded.value, created_at = now(), ip_hash = excluded.ip_hash;
+  end if;
+  return jsonb_build_object(
+    'likes', (select count(*) from proposal_votes where proposal_id = p_id and value = 1),
+    'dislikes', (select count(*) from proposal_votes where proposal_id = p_id and value = -1),
+    'my_vote', p_value);
+end;
+$$;
+revoke all on function public.vote_proposal(uuid, text, int) from public;
+grant execute on function public.vote_proposal(uuid, text, int) to anon, authenticated;
 
 revoke all on function public.submit_proposal(text, text, text, text, text, text, text) from public;
 grant execute on function public.submit_proposal(text, text, text, text, text, text, text) to anon, authenticated;

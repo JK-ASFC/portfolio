@@ -1,6 +1,6 @@
 # LEONE — les événements de la résidence
 
-Site statique (HTML/CSS/JS, sans build), bilingue FR / EN, hébergé sur GitHub Pages.
+Site statique (HTML/CSS/JS, sans build), en 20 langues, hébergé sur GitHub Pages.
 Les résidents consultent les événements, répondent et indiquent ce qu'ils ramènent.
 Les organisateurs gèrent les événements depuis **Organiser**.
 
@@ -13,6 +13,22 @@ js/store.js       données : Supabase, ou mode démo (localStorage)
 js/app.js         rendu, formulaires, modération
 supabase.sql      schéma, sécurité (RLS + fonctions) et événement d'exemple
 ```
+
+## Langues
+
+20 langues : français, anglais, espagnol, portugais, italien, allemand, polonais, russe, ukrainien,
+turc, arabe (de droite à gauche), hindi, vietnamien, malais, chinois, japonais, coréen, lingala,
+créole guadeloupéen et créole martiniquais.
+
+- **Bascule automatique** selon la langue de l'appareil (sinon anglais) ; choix manuel avec le menu 🌐,
+  mémorisé sur l'appareil.
+- Les textes vus par les résidents sont traduits dans chaque langue (`js/lang/<code>.js`, chargé à la
+  demande). L'espace organisateur reste en français / anglais.
+- Le contenu écrit par les organisateurs (événements, messages…) s'affiche en anglais (si la version
+  anglaise est remplie) pour toutes les langues autres que le français.
+- Ajouter ou corriger une langue : modifier `js/lang/<code>.js`, puis vérifier avec
+  `node tools/check-i18n.js` (textes manquants, variables `{n}` / `{x}` cassées).
+- ⚠ Lingala et créoles : traductions à faire relire par une personne dont c'est la langue.
 
 ## Mise en ligne (GitHub Pages)
 
@@ -38,11 +54,18 @@ Sans Supabase, le site tourne en **mode démo** : chaque navigateur a ses propre
 
 ## Propositions d'événements
 
-Onglet **Proposer** : les résidents envoient une idée (titre, détails, quand, ce qu'il faudrait,
-prénom facultatif). À côté du formulaire, la liste **« Déjà proposé »** montre les idées en attente
-ou acceptées (titre, extrait, statut — jamais le prénom ni les besoins). Les organisateurs gèrent les
+Sur la **page d'accueil**, sous les événements, la section **« Idées des résidents »** liste les idées
+en attente ou acceptées (titre, extrait, statut — jamais le prénom ni les besoins). Le bouton
+**« Proposer une idée »** ouvre le formulaire sur place (titre, détails, quand, ce qu'il faudrait,
+prénom facultatif). L'ancien lien `#/propose` mène à l'accueil, formulaire ouvert. Les organisateurs gèrent les
 propositions dans Organiser → Propositions : refuser (l'idée disparaît de la liste publique),
 supprimer, ou **Créer l'événement** (éditeur pré-rempli). Limite : 3 propositions / 24 h par appareil, 10 / heure par connexion.
+
+**Votes 👍 / 👎** : chaque idée affiche ses « j'aime » et « je n'aime pas ». Un vote par appareil et par
+idée (vérifié par la base, comme les réponses) ; recliquer retire le vote, on peut changer d'avis.
+Les idées les plus appréciées remontent en tête de liste (les idées acceptées restent en premier).
+Le détail de qui a voté quoi n'est jamais public ; les organisateurs voient les totaux dans
+Organiser → Propositions. Limite : 120 votes / 10 min par connexion.
 
 ## Pot commun
 
