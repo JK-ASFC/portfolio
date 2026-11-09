@@ -169,7 +169,7 @@ $$;
 -- ---------- Envoyer / modifier sa réponse ----------
 -- Erreurs renvoyées (champ "message") :
 --   INVALID, EVENT_NOT_FOUND, EVENT_CLOSED, ALREADY_ANSWERED,
---   NAME_TAKEN, NAME_INITIAL, FULL, RATE_LIMIT, NOT_FOUND
+--   NAME_TAKEN, FULL, RATE_LIMIT, NOT_FOUND
 create or replace function public.submit_response(
   p_event_id text, p_device text, p_name text, p_show_name boolean,
   p_status text, p_guests int, p_items jsonb, p_other text,
@@ -203,8 +203,6 @@ begin
   p_name := trim(regexp_replace(coalesce(p_name, ''), '\s+', ' ', 'g'));
   nkey := public.leone_name_key(p_name);
   if length(p_name) not between 1 and 40 or nkey = '' then raise exception 'INVALID'; end if;
-  -- prénom + initiale du nom obligatoires (ex : « Marc D. ») pour distinguer les homonymes
-  if nkey !~ '^[a-z0-9]+( [a-z0-9]+)+$' then raise exception 'NAME_INITIAL'; end if;
   if p_status not in ('yes', 'maybe', 'no') then raise exception 'INVALID'; end if;
   if g < 0 or g > 10 then raise exception 'INVALID'; end if;
   if coalesce((ev->>'allowGuests')::boolean, false) = false or p_status = 'no' then g := 0; end if;
