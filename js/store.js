@@ -15,6 +15,7 @@
   const LS_DEVICE = "leone.device";
   const LS_PROPOSALS = "leone.proposals.v1";
   const LS_VOTES = "leone.votes.v1";
+  const LS_GUIDE = "leone.guide.v1";
   const LS_POT = "leone.pot.v1";
   const LS_POT_ENTRIES = "leone.potEntries.v1";
   const LS_INV_GROUPS = "leone.invGroups.v1";
@@ -530,8 +531,9 @@
       return blob;
     },
 
-    /** Envoie un ticket et renvoie sa référence (chemin Storage, ou image en mode démo). */
-    async uploadReceipt(file) {
+    /** Envoie une photo (ticket ou mode d'emploi) et renvoie sa référence (chemin Storage, ou image en mode démo). */
+    async uploadReceipt(file, bucket = "receipts") {
+      if (!["receipts", "guide"].includes(bucket)) throw fail("INVALID");
       if (!REMOTE) {
         const blob = await this.compressImage(file, 900, 0.7);
         return await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(fail("IMAGE")); r.readAsDataURL(blob); });
@@ -543,7 +545,7 @@
       if (!tk) throw fail("AUTH");
       let res;
       try {
-        res = await fetch(`${BASE}/storage/v1/object/receipts/${path}`, {
+        res = await fetch(`${BASE}/storage/v1/object/${bucket}/${path}`, {
           method: "POST",
           headers: { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${tk}`, "Content-Type": "image/jpeg", "x-upsert": "false" },
           body: blob
@@ -553,13 +555,73 @@
       return path;
     },
 
-    async removeReceipt(path) {
-      if (!REMOTE || !path) return;
+    async removeReceipt(path, bucket = "receipts") {
+      if (!REMOTE || !path || !/^[0-9]{4}\/[0-9a-f-]{36}\.jpg$/.test(path)) return;
       const tk = await token();
       if (!tk) return;
       try {
-        await fetch(`${BASE}/storage/v1/object/receipts/${path}`, { method: "DELETE", headers: { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${tk}` } });
+        await fetch(`${BASE}/storage/v1/object/${bucket}/${path}`, { method: "DELETE", headers: { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${tk}` } });
       } catch (e) { /* le fichier orphelin pourra être supprimé depuis Supabase */ }
+    },
+
+    /* ----- Mode d'emploi ----- */
+    /** Adresse affichable d'une photo : image du site, photo démo (data:) ou stockage « guide ». */
+    guidePhotoUrl(path) {
+      if (!path) return "";
+      if (/^img\/guide\/[a-z0-9._-]+$/.test(path) || path.startsWith("data:image/")) return path;
+      if (REMOTE && /^[0-9]{4}\/[0-9a-f-]{36}\.jpg$/.test(path)) return `${BASE}/storage/v1/object/public/guide/${path}`;
+      return "";
+    },
+
+    /** Articles du mode d'emploi ; all = true (organisateurs) : y compris les articles masqués. */
+    async listGuide(all = false) {
+      let rows;
+      if (!REMOTE) rows = local.read(LS_GUIDE, null) || (window.LEONE_GUIDE_SEED || []);
+      else {
+        const raw = await sb("guide_articles?select=*&order=sort.asc,created_at.asc", {}, all);
+        rows = raw.map((a) => ({ id: a.id, emoji: a.emoji, title: a.title, title_en: a.title_en, body: a.body, body_en: a.body_en,
+          photos: a.photos || [], sort: a.sort, published: a.published, createdAt: a.created_at, updatedAt: a.updated_at }));
+      }
+      rows = rows.slice().sort((a, b) => a.sort - b.sort || (a.createdAt || "").localeCompare(b.createdAt || ""));
+      return all ? rows : rows.filter((a) => a.published);
+    },
+
+    async saveGuideArticle(a) {
+      const clean = {
+        emoji: String(a.emoji || "📘").trim().slice(0, 8) || "📘",
+        title: String(a.title || "").trim().slice(0, 100), title_en: String(a.title_en || "").trim().slice(0, 100),
+        body: String(a.body || "").slice(0, 10000), body_en: String(a.body_en || "").slice(0, 10000),
+        photos: (a.photos || []).slice(0, 12).map((p) => ({ path: p.path, caption: String(p.caption || "").slice(0, 200), caption_en: String(p.caption_en || "").slice(0, 200) })),
+        published: a.published !== false,
+        sort: Number.isFinite(a.sort) ? a.sort : Date.now() % 1000000,
+        updatedAt: new Date().toISOString()
+      };
+      if (!clean.title) throw fail("INVALID");
+      if (!REMOTE) {
+        const all = local.read(LS_GUIDE, null) || (window.LEONE_GUIDE_SEED || []).slice();
+        const i = all.findIndex((x) => x.id === a.id);
+        if (i >= 0) all[i] = { ...all[i], ...clean }; else all.push({ ...clean, id: uid(), createdAt: new Date().toISOString() });
+        local.write(LS_GUIDE, all);
+        if ((local.read(LS_GUIDE, []) || []).length !== all.length) throw fail("STORAGE");
+        return;
+      }
+      const body = JSON.stringify({ emoji: clean.emoji, title: clean.title, title_en: clean.title_en, body: clean.body, body_en: clean.body_en,
+        photos: clean.photos, published: clean.published, sort: clean.sort, updated_at: clean.updatedAt });
+      if (a.id) await sb(`guide_articles?id=eq.${encodeURIComponent(a.id)}`, { method: "PATCH", body }, true);
+      else await sb("guide_articles", { method: "POST", body }, true);
+    },
+
+    async deleteGuideArticle(a) {
+      if (!REMOTE) { local.write(LS_GUIDE, (local.read(LS_GUIDE, null) || (window.LEONE_GUIDE_SEED || [])).filter((x) => x.id !== a.id)); return; }
+      await sb(`guide_articles?id=eq.${encodeURIComponent(a.id)}`, { method: "DELETE" }, true);
+      for (const p of a.photos || []) await this.removeReceipt(p.path, "guide");
+    },
+
+    /** Échange l'ordre de deux articles. */
+    async swapGuideOrder(a, b) {
+      const sa = a.sort, sb2 = b.sort === sa ? sa + 1 : b.sort;
+      await this.saveGuideArticle({ ...a, sort: sb2 });
+      await this.saveGuideArticle({ ...b, sort: sa });
     },
 
     async addPotEntry(e, receiptFile) {
@@ -720,7 +782,7 @@
       if (REMOTE) return;
       local.write(LS_EVENTS, seedEvents());
       local.write(LS_RESP, []);
-      [LS_PROPOSALS, LS_VOTES, LS_POT, LS_POT_ENTRIES, LS_INV_GROUPS, LS_INV_ITEMS, LS_ANNOUNCE].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
+      [LS_PROPOSALS, LS_VOTES, LS_GUIDE, LS_POT, LS_POT_ENTRIES, LS_INV_GROUPS, LS_INV_ITEMS, LS_ANNOUNCE].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
     },
 
     uid
