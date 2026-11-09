@@ -323,7 +323,7 @@
       <form class="form" id="rsvpForm" novalidate autocomplete="off">
         <div class="field">
           <label for="f_name">${esc(t("form.name"))}</label>
-          <input type="text" id="f_name" name="fname" required maxlength="40" autocomplete="name" placeholder="${esc(t("form.namePh"))}" value="${esc(mine ? mine.name : "")}">
+          <input type="text" id="f_name" name="fname" required maxlength="40" autocomplete="given-name" placeholder="${esc(t("form.namePh"))}" value="${esc(mine ? mine.name : "")}">
           <small>${esc(t("form.nameHint"))}</small>
         </div>
         <label class="check">
@@ -378,7 +378,6 @@
       if (Date.now() - shownAt < 2500) { toast(t("form.tooFast")); return; }
       const name = form.fname.value.replace(/\s+/g, " ").trim();
       if (!name) { form.fname.focus(); toast(t("form.needName")); return; }
-      if (!/\s\S/.test(name)) { form.fname.focus(); toast(t("err.NAME_INITIAL")); return; }
       const answers = {};
       (ev.questions || []).forEach((qq) => { const el = form[`q_${qq.id}`]; if (el && el.value.trim()) answers[qq.id] = el.value.trim(); });
       const st2 = form.status.value;

@@ -131,10 +131,10 @@ Les langues autres que le français affichent la version anglaise de l'article.
 - Chaque appareil reçoit un identifiant secret aléatoire (stocké dans le navigateur, seule son
   empreinte SHA-256 est enregistrée). **Une réponse par appareil et par événement** : si la personne
   revient, le site affiche « Tu as déjà répondu » et propose de **modifier** sa réponse.
-- On répond avec **prénom + initiale du nom** (« Marc D. »), obligatoire et vérifié par la base : deux
-  voisins qui ont le même prénom (« Marc D. », « Marc L. ») répondent sans problème.
-- **Un même « prénom + initiale » ne peut répondre qu'une fois par événement** (insensible aux accents,
-  majuscules et ponctuation : « Marc D. » et « marc d » sont identiques).
+- On répond avec son **prénom** (champ libre, sans format imposé).
+- **Un même prénom ne peut répondre qu'une fois par événement** (insensible aux accents, majuscules
+  et ponctuation : « Marc » et « marc. » sont identiques). Le second « Marc » est invité à ajouter
+  l'initiale de son nom (« Marc D. »).
 - Côté organisateurs, seuls les cas douteux sont signalés (« Marc D. » / « Marc Du. ») ; deux homonymes
   bien distingués ne déclenchent pas d'alerte.
 - Vérifié **côté serveur** (contraintes `UNIQUE` + fonction `submit_response`) : impossible de
