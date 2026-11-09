@@ -238,10 +238,15 @@
     } catch (e) { throw fail("NETWORK"); }
     const txt = await res.text();
     if (!res.ok) {
-      let msg = "";
-      try { msg = JSON.parse(txt).message || ""; } catch (e) { /* ignore */ }
+      let msg = "", code = "";
+      try { const j = JSON.parse(txt); msg = j.message || ""; code = j.code || ""; } catch (e) { /* ignore */ }
       const known = ["INVALID", "EVENT_NOT_FOUND", "EVENT_CLOSED", "ALREADY_ANSWERED", "NAME_TAKEN", "NAME_INITIAL", "FULL", "RATE_LIMIT", "NOT_FOUND"];
       if (known.includes(msg)) throw fail(msg);
+      // table ou fonction absente : supabase.sql n'a pas été relancé après une mise à jour du site
+      if (["PGRST205", "PGRST202", "42P01", "42883"].includes(code) || res.status === 404 || /could not find|does not exist/i.test(msg)) {
+        console.warn("LEONE : base de données à mettre à jour (relancer supabase.sql) —", code, msg);
+        throw fail("DB_OUTDATED");
+      }
       if (res.status === 401 || res.status === 403) throw fail("AUTH");
       throw fail("INVALID");
     }
