@@ -1106,8 +1106,12 @@
       if (v === "inventory") await LEONE_EXT.renderInventory(ctx);
       if (v === "guide") LEONE_EXT.renderGuide(ctx);
     } catch (err) {
-      console.error(err);
-      toast(errMsg(err));
+      if (!err.code) console.error(err);
+      // message affiché dans la page elle-même (plutôt qu'une page vide)
+      const roots = { home: "#eventList", inventory: "#inventoryRoot", infos: "#infosRoot", pot: "#potRoot", admin: "#adminRoot" };
+      const box = roots[v] && $(roots[v]);
+      if (box && err.code === "DB_OUTDATED") box.innerHTML = `<div class="empty">⚙️ ${esc(errMsg(err))}</div>`;
+      else toast(errMsg(err));
     }
     const h1 = v === "event" ? $("#eventDetail h1") : null;
     document.title = h1 ? `${h1.textContent} · LEONE` : t("meta.title");
