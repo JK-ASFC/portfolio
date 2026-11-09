@@ -66,6 +66,26 @@ les dépenses sans ticket sont signalées « ticket manquant ».
 - Stockage Supabase `receipts` : lecture publique, envoi/suppression réservés aux organisateurs,
   3 Mo max, JPEG uniquement. Pense à masquer nom et numéro de carte avant de photographier.
 
+## Inventaire
+
+Onglet **Plus → Inventaire** : les objets présents dans les espaces communs, rangés par espace
+(🧊 Frigo, 🗄️ Tiroir, 🍽️ Lave-vaisselle au départ). Tout le monde consulte et peut rechercher un objet ;
+un organisateur connecté modifie directement sur la page : quantités avec − / +, ajout et retrait
+d'objets, ajout et suppression d'espaces. Un objet à 0 apparaît « épuisé ».
+
+## Infos (messages aux résidents)
+
+Les organisateurs publient des messages depuis **Organiser → Infos** :
+- **Permanent** : visible dans l'onglet Infos et en bandeau sur l'accueil ;
+- **Pop-up** : s'ouvre à l'arrivée sur le site, une seule fois par appareil (bouton « J'ai compris »).
+
+Chaque message peut être marqué important, traduit en anglais, programmé (date de début) et
+limité dans le temps (date de fin). Le public ne voit que les messages en cours.
+
+## Mode d'emploi
+
+Onglet **Plus → Mode d'emploi** : page d'attente, le contenu (multilingue) viendra plus tard.
+
 ## Confidentialité
 
 - Pas de compte pour répondre, **pas de numéro d'appartement**.

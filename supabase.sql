@@ -441,6 +441,68 @@ create policy "receipts admin update" on storage.objects for update to authentic
 create policy "receipts admin delete" on storage.objects for delete to authenticated
   using (bucket_id = 'receipts' and public.is_admin());
 
+-- =============================================================
+-- INVENTAIRE (frigo, tiroir, lave-vaisselle…)
+-- Lecture publique, modification réservée aux organisateurs.
+-- =============================================================
+create table if not exists public.inventory_groups (
+  id          text primary key check (id ~ '^[a-z0-9-]{1,40}$'),
+  name        text not null check (length(name) between 1 and 40),
+  name_en     text not null default '' check (length(name_en) <= 40),
+  emoji       text not null default '📦' check (length(emoji) <= 8),
+  sort        int  not null default 0,
+  created_at  timestamptz not null default now()
+);
+create table if not exists public.inventory_items (
+  id          uuid primary key default gen_random_uuid(),
+  group_id    text not null references public.inventory_groups(id) on delete cascade,
+  name        text not null check (length(name) between 1 and 60),
+  name_en     text not null default '' check (length(name_en) <= 60),
+  qty         int  not null default 1 check (qty between 0 and 999),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists inventory_items_group_idx on public.inventory_items(group_id);
+alter table public.inventory_groups enable row level security;
+alter table public.inventory_items  enable row level security;
+drop policy if exists "inventory groups read"  on public.inventory_groups;
+drop policy if exists "inventory groups admin" on public.inventory_groups;
+drop policy if exists "inventory items read"   on public.inventory_items;
+drop policy if exists "inventory items admin"  on public.inventory_items;
+create policy "inventory groups read"  on public.inventory_groups for select using (true);
+create policy "inventory groups admin" on public.inventory_groups for all using (public.is_admin()) with check (public.is_admin());
+create policy "inventory items read"   on public.inventory_items  for select using (true);
+create policy "inventory items admin"  on public.inventory_items  for all using (public.is_admin()) with check (public.is_admin());
+
+insert into public.inventory_groups (id, name, name_en, emoji, sort) values
+  ('frigo', 'Frigo', 'Fridge', '🧊', 1),
+  ('tiroir', 'Tiroir', 'Drawer', '🗄️', 2),
+  ('lave-vaisselle', 'Lave-vaisselle', 'Dishwasher', '🍽️', 3)
+on conflict (id) do nothing;
+
+-- =============================================================
+-- INFORMATIONS (messages permanents et pop-up pour les résidents)
+-- Le public ne voit que les messages en cours (début passé, fin non atteinte).
+-- =============================================================
+create table if not exists public.announcements (
+  id          uuid primary key default gen_random_uuid(),
+  kind        text not null default 'permanent' check (kind in ('permanent', 'popup')),
+  important   boolean not null default false,
+  title       text not null check (length(title) between 1 and 100),
+  title_en    text not null default '' check (length(title_en) <= 100),
+  body        text not null default '' check (length(body) <= 2000),
+  body_en     text not null default '' check (length(body_en) <= 2000),
+  starts_at   timestamptz not null default now(),
+  ends_at     timestamptz,
+  created_at  timestamptz not null default now(),
+  constraint announcements_dates check (ends_at is null or ends_at > starts_at)
+);
+alter table public.announcements enable row level security;
+drop policy if exists "announcements read"  on public.announcements;
+drop policy if exists "announcements admin" on public.announcements;
+create policy "announcements read" on public.announcements for select
+  using (starts_at <= now() and (ends_at is null or ends_at > now()));
+create policy "announcements admin" on public.announcements for all using (public.is_admin()) with check (public.is_admin());
+
 -- -------------------------------------------------------------
 -- Exemple : match de l'Équipe de France, jeudi 12 novembre 2026
 -- -------------------------------------------------------------
