@@ -447,6 +447,7 @@
     if (sub === "proposals") return renderAdminProposals();
     if (sub === "pot") return renderAdminPot();
     if (sub === "infos") return LEONE_EXT.renderAdminInfos(ctx, await adminTabs("infos"));
+    if (sub === "guide") return LEONE_EXT.renderAdminGuide(ctx, await adminTabs("guide"), id);
 
     const [events, stats] = await Promise.all([Store.listEvents(), Store.stats()]);
     const list = events.slice().sort(sortByStart).reverse();
@@ -984,6 +985,7 @@
       ${tab("proposals", "#/admin/proposals", t("adm.tabProposals") + (n ? ` (${n})` : ""))}
       ${tab("pot", "#/admin/pot", t("adm.tabPot"))}
       ${tab("infos", "#/admin/infos", t("adm.tabInfos"))}
+      ${tab("guide", "#/admin/guide", t("adm.tabGuide"))}
       ${tab("inventory", "#/inventory", t("adm.tabInventory"))}
     </nav>`;
   }
@@ -1184,7 +1186,7 @@
       if (v === "pot") await renderPot();
       if (v === "infos") await LEONE_EXT.renderInfos(ctx);
       if (v === "inventory") await LEONE_EXT.renderInventory(ctx);
-      if (v === "guide") LEONE_EXT.renderGuide(ctx);
+      if (v === "guide") await LEONE_EXT.renderGuide(ctx);
     } catch (err) {
       if (!err.code) console.error(err);
       // message affiché dans la page elle-même (plutôt qu'une page vide)

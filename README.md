@@ -107,7 +107,17 @@ limité dans le temps (date de fin). Le public ne voit que les messages en cours
 
 ## Mode d'emploi
 
-Onglet **Plus → Mode d'emploi** : page d'attente, le contenu (multilingue) viendra plus tard.
+Onglet **Plus → Mode d'emploi** : les consignes pratiques de la résidence, sous forme d'articles.
+Premier article : **« Chauffage au sol : le thermostat »** (réglage, positions de la molette, lecture de
+l'écran, règle des 19 °C, délai de 48 h), avec deux schémas sans texte (`img/guide/`).
+
+Les organisateurs gèrent les articles dans **Organiser → Mode d'emploi** : créer, modifier, monter /
+descendre, masquer / publier, supprimer. Chaque article a un titre et un texte (FR + EN facultatif)
+et jusqu'à 12 **photos avec légende**, envoyées depuis le téléphone (ré-encodées, métadonnées GPS
+supprimées, stockage Supabase `guide`). Mise en forme simple : `## intertitre`, `- liste`,
+`1. étape`, `**gras**`, `> encadré`, `[photo 1]` pour placer une photo ; bouton **Aperçu**.
+Le texte est échappé avant mise en forme (pas d'injection de code possible).
+Les langues autres que le français affichent la version anglaise de l'article.
 
 ## Confidentialité
 

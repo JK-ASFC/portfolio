@@ -564,6 +564,126 @@ create policy "announcements read" on public.announcements for select
   using (starts_at <= now() and (ends_at is null or ends_at > now()));
 create policy "announcements admin" on public.announcements for all using (public.is_admin()) with check (public.is_admin());
 
+
+-- =============================================================
+-- MODE D'EMPLOI (articles rédigés par les organisateurs, avec photos)
+-- Lecture publique des articles publiés ; écriture réservée aux organisateurs.
+-- =============================================================
+-- photos : liste de {path, caption, caption_en} ; path = image du site (img/guide/…)
+-- ou photo envoyée dans le stockage « guide » (AAAA/uuid.jpg)
+create or replace function public.leone_valid_photos(p jsonb) returns boolean
+language sql immutable as $$
+  select jsonb_typeof(p) = 'array' and jsonb_array_length(p) <= 12 and coalesce((
+    select bool_and(
+      jsonb_typeof(e) = 'object'
+      and (e->>'path') ~ '^(img/guide/[a-z0-9._-]+|[0-9]{4}/[0-9a-f-]{36}\.jpg)$'
+      and length(coalesce(e->>'caption', '')) <= 200
+      and length(coalesce(e->>'caption_en', '')) <= 200)
+    from jsonb_array_elements(p) e), true);
+$$;
+
+create table if not exists public.guide_articles (
+  id          uuid primary key default gen_random_uuid(),
+  emoji       text not null default '📘' check (length(emoji) <= 8),
+  title       text not null check (length(title) between 1 and 100),
+  title_en    text not null default '' check (length(title_en) <= 100),
+  body        text not null default '' check (length(body) <= 10000),
+  body_en     text not null default '' check (length(body_en) <= 10000),
+  photos      jsonb not null default '[]'::jsonb check (public.leone_valid_photos(photos)),
+  sort        int  not null default 0,
+  published   boolean not null default true,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+alter table public.guide_articles enable row level security;
+drop policy if exists "guide read"  on public.guide_articles;
+drop policy if exists "guide admin" on public.guide_articles;
+create policy "guide read"  on public.guide_articles for select using (published);
+create policy "guide admin" on public.guide_articles for all using (public.is_admin()) with check (public.is_admin());
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('guide', 'guide', true, 3145728, array['image/jpeg'])
+on conflict (id) do update set public = true, file_size_limit = 3145728, allowed_mime_types = array['image/jpeg'];
+drop policy if exists "guide photos admin insert" on storage.objects;
+drop policy if exists "guide photos admin update" on storage.objects;
+drop policy if exists "guide photos admin delete" on storage.objects;
+create policy "guide photos admin insert" on storage.objects for insert to authenticated
+  with check (bucket_id = 'guide' and public.is_admin());
+create policy "guide photos admin update" on storage.objects for update to authenticated
+  using (bucket_id = 'guide' and public.is_admin());
+create policy "guide photos admin delete" on storage.objects for delete to authenticated
+  using (bucket_id = 'guide' and public.is_admin());
+
+-- Premier article : le chauffage au sol (créé une seule fois, modifiable ensuite dans Organiser)
+insert into public.guide_articles (id, emoji, title, title_en, body, body_en, photos, sort)
+values ('9e1f0c2a-6b1d-4c55-9a51-0c1e5e0a7a01', '🌡️', 'Chauffage au sol : le thermostat', 'Underfloor heating: the thermostat',
+  $g$Le chauffage au sol de la résidence est activé. La température se règle avec le **thermostat de ton logement**.
+
+## La règle d'or : laisse la molette sur AUTO
+En position **AUTO**, le thermostat chauffe tout seul : **confort** la journée, **économie** la nuit. Tu n'as rien d'autre à faire.
+
+## Régler ta température de confort
+1. Tourne la molette sur **☀ (Confort)**.
+2. Règle la température avec les touches **+** et **−** (de 10 à 30 °C, 19 °C par défaut), puis valide.
+3. Remets la molette sur **AUTO**.
+
+## Les positions de la molette
+[photo 1]
+- **AUTO** : suit le programme (position normale)
+- **☀ Soleil** : confort en continu
+- **☾ Lune** : économie en continu
+- **❄ Flocon** : hors-gel (7 °C)
+- **⏻ Arrêt** : chauffage coupé (été)
+- **🕓 PROG** : heure et programme réglés par le gestionnaire, **n'y touche pas**
+
+## Lire l'écran
+[photo 2]
+1. **Heure**
+2. **☀ Soleil** : période confort en cours. **☾ Lune** : période économie.
+3. **Petite flamme** (ou « ON ») : le chauffage tourne. Éteinte ? C'est normal, la température demandée est atteinte.
+4. **Barre du bas** : le programme de la journée, de 0 h à 24 h.
+5. **Chiffres 1 à 7** : le jour de la semaine (1 = lundi).
+6. **Boutons** : 🧳 mode absence · ⏳ température temporaire (de 30 min à 72 h) · bouton HEAT/COOL, ne pas toucher · **i** pour passer de la température de la pièce à la température demandée.
+
+## Bon à savoir
+> Le chauffage collectif est réglé à **19 °C maximum**, comme l'impose la réglementation. Mettre le thermostat plus haut ne chauffe ni plus vite ni plus fort.
+
+Après la mise en route, la température met un peu de temps à s'installer. Si au bout de **48 heures** la température de ton logement n'a pas changé, contacte le gestionnaire de la résidence.$g$,
+  $g$Underfloor heating is now on in the residence. You set the temperature with the **thermostat in your apartment**.
+
+## The golden rule: leave the dial on AUTO
+On **AUTO**, the thermostat does everything by itself: **comfort** during the day, **eco** at night. You don't need to do anything else.
+
+## Set your comfort temperature
+1. Turn the dial to **☀ (Comfort)**.
+2. Set the temperature with the **+** and **−** buttons (10 to 30 °C, 19 °C by default), then confirm.
+3. Turn the dial back to **AUTO**.
+
+## Dial positions
+[photo 1]
+- **AUTO**: follows the schedule (normal position)
+- **☀ Sun**: comfort all the time
+- **☾ Moon**: eco all the time
+- **❄ Snowflake**: frost protection (7 °C)
+- **⏻ Off**: heating off (summer)
+- **🕓 PROG**: clock and schedule set by the building manager, **please don't change**
+
+## Reading the screen
+[photo 2]
+1. **Clock**
+2. **☀ Sun**: comfort period. **☾ Moon**: eco period.
+3. **Small flame** (or “ON”): the heating is running. Off? That's normal, the requested temperature has been reached.
+4. **Bottom bar**: today's schedule, from 0 h to 24 h.
+5. **Numbers 1 to 7**: day of the week (1 = Monday).
+6. **Buttons**: 🧳 away mode · ⏳ temporary temperature (30 min to 72 h) · HEAT/COOL button, don't touch · **i** to switch between room temperature and requested temperature.
+
+## Good to know
+> The central heating supply is capped at **19 °C**, the maximum allowed by French regulations. Setting the thermostat higher won't heat faster or warmer.
+
+After start-up, the temperature takes a little while to settle. If after **48 hours** your apartment's temperature hasn't changed, contact the building manager.$g$,
+  $g$[{"path": "img/guide/thermostat-molette.jpg", "caption": "La molette du thermostat", "caption_en": "The thermostat dial"}, {"path": "img/guide/thermostat-ecran.jpg", "caption": "L'écran du thermostat (repères 1 à 6)", "caption_en": "The thermostat screen (markers 1 to 6)"}]$g$::jsonb, 1)
+on conflict (id) do nothing;
+
 -- -------------------------------------------------------------
 -- Exemple : match de l'Équipe de France, jeudi 12 novembre 2026
 -- -------------------------------------------------------------
