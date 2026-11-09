@@ -38,6 +38,12 @@ créole guadeloupéen et créole martiniquais.
 
 Sans Supabase, le site tourne en **mode démo** : chaque navigateur a ses propres données.
 
+## Réseaux (`js/config.js`)
+
+- `whatsappUrl` : le lien d'invitation du groupe WhatsApp. Il ajoute un bouton sur l'accueil et un lien en bas de page.
+- `instagramGroupUrl` : le lien d'invitation du groupe Instagram. Pour l'obtenir dans Instagram : discussion de groupe → nom du groupe → **Inviter via un lien** → copier. On peut aussi mettre le lien d'un canal ou d'un compte. Le bouton reste masqué tant que ce champ est vide.
+- `creatorInstagram` : le pseudo affiché en bas de page dans « Site créé par @… ».
+
 ## Base partagée et sécurisée (Supabase, gratuit)
 
 1. Créer un projet sur <https://supabase.com>.

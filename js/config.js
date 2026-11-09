@@ -24,5 +24,12 @@ window.LEONE_CONFIG = {
   potUrl: "https://revolut.me/kvin7qt5u",
 
   // Lien d'invitation du groupe WhatsApp de la résidence (vide = bouton masqué)
-  whatsappUrl: "https://chat.whatsapp.com/FB8d4RgmAab7Ih2u8mNoLA"
+  whatsappUrl: "https://chat.whatsapp.com/FB8d4RgmAab7Ih2u8mNoLA",
+
+  // Lien d'invitation du groupe Instagram (Instagram → discussion de groupe → ⓘ →
+  // « Inviter via un lien »), ou lien d'un canal / d'un compte. Vide = bouton masqué.
+  instagramGroupUrl: "",
+
+  // Créateur du site, affiché en bas de page (pseudo Instagram, sans @)
+  creatorInstagram: "kev_kev_jk_"
 };

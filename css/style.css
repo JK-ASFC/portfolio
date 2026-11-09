@@ -131,11 +131,17 @@ label.lang::after { content: "▾"; position: absolute; inset-inline-end: 10px; 
 .btn:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--ink); }
 .btn-primary { --bg: var(--orange); }
 .btn-dark { --bg: var(--ink); --fg: var(--cream); }
-.btn-wa { --bg: #25d366; --fg: var(--ink); margin-top: 22px; }
+.hero-social { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+.btn-wa { --bg: #25d366; --fg: var(--ink); }
+.btn-ig { --bg: linear-gradient(45deg, #c2410c, #be185d 55%, #7e22ce); --fg: #fff; }
 .wa-ico { width: 1.25em; height: 1.25em; flex: none; }
 .footer-wa { margin: 14px 0 0; }
 .footer-wa a { display: inline-flex; align-items: center; gap: 8px; color: #25d366; font-weight: 700; text-decoration: none; }
 .footer-wa a:hover { text-decoration: underline; }
+.footer-ig { margin: 8px 0 0; }
+.footer-ig a, .ig-credit { display: inline-flex; align-items: center; gap: 6px; color: #ff8ac0; font-weight: 700; text-decoration: none; }
+.footer-ig a:hover, .ig-credit:hover { text-decoration: underline; }
+.footer-credit { margin: 18px 0 0; font-size: .9rem; opacity: .85; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
 .btn-sm { padding: 8px 13px; font-size: .85rem; box-shadow: 2px 2px 0 var(--ink); }
 .btn-danger { --bg: #ffd9d4; }
 .btn[disabled] { opacity: .5; pointer-events: none; }
