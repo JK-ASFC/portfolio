@@ -61,6 +61,12 @@ prénom facultatif). L'ancien lien `#/propose` mène à l'accueil, formulaire ou
 propositions dans Organiser → Propositions : refuser (l'idée disparaît de la liste publique),
 supprimer, ou **Créer l'événement** (éditeur pré-rempli). Limite : 3 propositions / 24 h par appareil, 10 / heure par connexion.
 
+**Votes 👍 / 👎** : chaque idée affiche ses « j'aime » et « je n'aime pas ». Un vote par appareil et par
+idée (vérifié par la base, comme les réponses) ; recliquer retire le vote, on peut changer d'avis.
+Les idées les plus appréciées remontent en tête de liste (les idées acceptées restent en premier).
+Le détail de qui a voté quoi n'est jamais public ; les organisateurs voient les totaux dans
+Organiser → Propositions. Limite : 120 votes / 10 min par connexion.
+
 ## Pot commun
 
 Le site **n'encaisse aucun argent** et ne stocke aucune donnée bancaire. Il :

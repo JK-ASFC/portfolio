@@ -872,9 +872,43 @@
             <span class="tag tag-${esc(p.status)}">${esc(t(p.status === "accepted" ? "prop.stAccepted" : "prop.stPending"))}</span>
           </div>
           ${p.description ? `<p>${esc(p.description)}${p.description.length >= 200 ? "…" : ""}</p>` : ""}
-          <span class="idea-date">${esc(new Date(p.createdAt).toLocaleDateString(locale(), { day: "numeric", month: "short" }))}</span>
+          <div class="idea-foot">
+            <span class="idea-date">${esc(new Date(p.createdAt).toLocaleDateString(locale(), { day: "numeric", month: "short" }))}</span>
+            <span class="idea-votes" role="group" aria-label="${esc(t("prop.votes"))}">${voteButtons(p)}</span>
+          </div>
         </li>`).join("")}</ul>`
       : `<div class="empty">${esc(t("prop.listEmpty"))}</div>`}`;
+
+    // 👍 / 👎 : recliquer sur son vote le retire ; affichage immédiat puis confirmation par la base
+    let busy = false;
+    box.onclick = async (e) => {
+      const btn = e.target.closest("[data-vote]");
+      if (!btn || busy) return;
+      const p = list.find((x) => x.id === btn.dataset.id);
+      if (!p) return;
+      const v = Number(btn.dataset.vote);
+      const next = p.myVote === v ? 0 : v;
+      const before = { likes: p.likes, dislikes: p.dislikes, myVote: p.myVote };
+      if (p.myVote === 1) p.likes--; else if (p.myVote === -1) p.dislikes--;
+      if (next === 1) p.likes++; else if (next === -1) p.dislikes++;
+      p.myVote = next;
+      const group = btn.closest(".idea-votes");
+      group.innerHTML = voteButtons(p);
+      busy = true;
+      try {
+        Object.assign(p, await Store.voteProposal(p.id, next));
+        group.innerHTML = voteButtons(p);
+      } catch (err) {
+        Object.assign(p, before);
+        group.innerHTML = voteButtons(p);
+        toast(errMsg(err));
+      } finally { busy = false; }
+    };
+  }
+  function voteButtons(p) {
+    return `
+      <button type="button" class="vote up ${p.myVote === 1 ? "is-on" : ""}" data-vote="1" data-id="${esc(p.id)}" aria-pressed="${p.myVote === 1}" aria-label="${esc(t("prop.like"))} (${p.likes})"><span aria-hidden="true">👍</span> <span class="vote-n">${p.likes}</span></button>
+      <button type="button" class="vote down ${p.myVote === -1 ? "is-on" : ""}" data-vote="-1" data-id="${esc(p.id)}" aria-pressed="${p.myVote === -1}" aria-label="${esc(t("prop.dislike"))} (${p.dislikes})"><span aria-hidden="true">👎</span> <span class="vote-n">${p.dislikes}</span></button>`;
   }
 
   /** Ouvre / ferme le formulaire de proposition sur l'accueil. */
@@ -972,6 +1006,7 @@
               ${p.whenText ? `${esc(t("ap.when", { x: p.whenText }))}<br>` : ""}
               ${p.needs ? `${esc(t("ap.needs", { x: p.needs }))}<br>` : ""}
               ${esc(t("ap.by", { x: p.name || t("ap.anon") }))} · ${esc(new Date(p.createdAt).toLocaleDateString(locale()))}${p.lang === "en" ? " · EN" : ""}
+              · <strong>👍 ${p.likes || 0} · 👎 ${p.dislikes || 0}</strong>
             </p>
             <div class="admin-actions">
               ${p.status !== "accepted" ? `<button class="btn btn-sm btn-primary" data-pcreate="${esc(p.id)}">${esc(t("ap.create"))}</button>` : ""}

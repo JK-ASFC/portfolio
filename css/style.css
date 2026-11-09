@@ -522,6 +522,18 @@ tr:last-child td { border-bottom: 0; }
 .ideas-block #propMain { margin-bottom: 22px; max-width: 760px; animation: slidein .4s var(--ease) both; }
 .ideas-hint { margin-bottom: 14px; }
 .idea-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.idea-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.idea-votes { display: flex; gap: 6px; }
+.vote {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  font: 700 .85rem var(--f-mono); color: var(--ink); background: var(--cream);
+  border: 2px solid var(--ink); border-radius: 999px; padding: 4px 10px; transition: transform .15s var(--ease), background .2s;
+}
+.vote:hover { transform: translateY(-2px); }
+.vote:active { transform: scale(.94); }
+.vote.up.is-on { background: var(--teal); color: var(--paper); }
+.vote.down.is-on { background: var(--pink); color: var(--paper); }
+.vote.is-on .vote-n { animation: pop .35s var(--ease); display: inline-block; }
 .idea-grid .idea { background: var(--paper); border: 2px solid var(--ink); border-radius: 16px; box-shadow: var(--shadow-sm); padding: 14px 16px; }
 
 /* ---------------- Propositions & admin ---------------- */

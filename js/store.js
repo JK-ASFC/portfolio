@@ -14,6 +14,7 @@
   const LS_RESP = "leone.responses.v3";
   const LS_DEVICE = "leone.device";
   const LS_PROPOSALS = "leone.proposals.v1";
+  const LS_VOTES = "leone.votes.v1";
   const LS_POT = "leone.pot.v1";
   const LS_POT_ENTRIES = "leone.potEntries.v1";
   const LS_INV_GROUPS = "leone.invGroups.v1";
@@ -409,18 +410,53 @@
     /** Idées déjà proposées, visibles par tous (sans prénom ni besoins). */
     async listPublicProposals() {
       if (!REMOTE) {
+        const votes = local.read(LS_VOTES, {});
+        const score = (p) => { const v = votes[p.id] || {}; return Object.values(v).reduce((n, x) => n + x, 0); };
+        const dev = hashLocal(device());
         return local.read(LS_PROPOSALS, []).filter((p) => p.status !== "rejected")
-          .sort((a, b) => (b.status === "accepted") - (a.status === "accepted") || (b.createdAt || "").localeCompare(a.createdAt || ""))
-          .slice(0, 60).map((p) => ({ id: p.id, title: p.title, description: (p.description || "").slice(0, 200), status: p.status, createdAt: p.createdAt }));
+          .sort((a, b) => (b.status === "accepted") - (a.status === "accepted") || score(b) - score(a) || (b.createdAt || "").localeCompare(a.createdAt || ""))
+          .slice(0, 60).map((p) => {
+            const v = Object.values(votes[p.id] || {});
+            return { id: p.id, title: p.title, description: (p.description || "").slice(0, 200), status: p.status, createdAt: p.createdAt,
+              likes: v.filter((x) => x === 1).length, dislikes: v.filter((x) => x === -1).length, myVote: (votes[p.id] || {})[dev] || 0 };
+          });
       }
-      const rows = await rpc("public_proposals", {});
-      return rows.map((r) => ({ id: r.id, title: r.title, description: r.description, status: r.status, createdAt: r.created_at }));
+      const rows = await rpc("public_proposals", { p_device: device() });
+      return rows.map((r) => ({ id: r.id, title: r.title, description: r.description, status: r.status, createdAt: r.created_at, likes: r.likes, dislikes: r.dislikes, myVote: r.my_vote }));
+    },
+
+    /** Vote 👍 (1) / 👎 (-1) / retrait (0). Renvoie { likes, dislikes, myVote }. */
+    async voteProposal(id, value) {
+      if (![-1, 0, 1].includes(value)) throw fail("INVALID");
+      if (!REMOTE) {
+        const p = local.read(LS_PROPOSALS, []).find((x) => x.id === id && x.status !== "rejected");
+        if (!p) throw fail("NOT_FOUND");
+        const votes = local.read(LS_VOTES, {});
+        const dev = hashLocal(device());
+        votes[id] = votes[id] || {};
+        if (value === 0) delete votes[id][dev]; else votes[id][dev] = value;
+        local.write(LS_VOTES, votes);
+        const v = Object.values(votes[id]);
+        return { likes: v.filter((x) => x === 1).length, dislikes: v.filter((x) => x === -1).length, myVote: value };
+      }
+      const r = await rpc("vote_proposal", { p_id: id, p_device: device(), p_value: value });
+      return { likes: r.likes, dislikes: r.dislikes, myVote: r.my_vote };
     },
 
     async listProposals() {
-      if (!REMOTE) return local.read(LS_PROPOSALS, []);
-      const rows = await sb("proposals?select=id,title,description,when_text,needs,name,lang,status,created_at&order=created_at.desc", {}, true);
-      return rows.map((r) => ({ id: r.id, title: r.title, description: r.description, whenText: r.when_text, needs: r.needs, name: r.name, lang: r.lang, status: r.status, createdAt: r.created_at }));
+      const count = (votes, id, val) => votes.filter((v) => v.proposalId === id && v.value === val).length;
+      if (!REMOTE) {
+        const all = local.read(LS_VOTES, {});
+        const votes = Object.entries(all).flatMap(([pid, m]) => Object.values(m).map((value) => ({ proposalId: pid, value })));
+        return local.read(LS_PROPOSALS, []).map((p) => ({ ...p, likes: count(votes, p.id, 1), dislikes: count(votes, p.id, -1) }));
+      }
+      const [rows, votesRaw] = await Promise.all([
+        sb("proposals?select=id,title,description,when_text,needs,name,lang,status,created_at&order=created_at.desc", {}, true),
+        sb("proposal_votes?select=proposal_id,value", {}, true).catch(() => [])
+      ]);
+      const votes = votesRaw.map((v) => ({ proposalId: v.proposal_id, value: v.value }));
+      return rows.map((r) => ({ id: r.id, title: r.title, description: r.description, whenText: r.when_text, needs: r.needs, name: r.name, lang: r.lang, status: r.status, createdAt: r.created_at,
+        likes: count(votes, r.id, 1), dislikes: count(votes, r.id, -1) }));
     },
 
     async setProposalStatus(id, status) {
@@ -684,7 +720,7 @@
       if (REMOTE) return;
       local.write(LS_EVENTS, seedEvents());
       local.write(LS_RESP, []);
-      [LS_PROPOSALS, LS_POT, LS_POT_ENTRIES, LS_INV_GROUPS, LS_INV_ITEMS, LS_ANNOUNCE].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
+      [LS_PROPOSALS, LS_VOTES, LS_POT, LS_POT_ENTRIES, LS_INV_GROUPS, LS_INV_ITEMS, LS_ANNOUNCE].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
     },
 
     uid
