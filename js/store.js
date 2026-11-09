@@ -16,6 +16,14 @@
   const LS_PROPOSALS = "leone.proposals.v1";
   const LS_VOTES = "leone.votes.v1";
   const LS_GUIDE = "leone.guide.v1";
+  const LS_PHOTOS = "leone.photos.v1";
+  const LS_ADS = "leone.ads.v1";
+  const LS_REPORTS = "leone.reports.v1";
+  const LS_POLLS = "leone.polls.v1";
+  const LS_POLL_VOTES = "leone.pollVotes.v1";
+  const LS_PUSH = "leone.push.v1";
+  const LS_PUSH_SUB = "leone.pushSub.v1";
+  const isClosed = (p) => Boolean(p.endsAt && new Date(p.endsAt) < new Date());
   const LS_POT = "leone.pot.v1";
   const LS_POT_ENTRIES = "leone.potEntries.v1";
   const LS_INV_GROUPS = "leone.invGroups.v1";
@@ -241,7 +249,7 @@
     if (!res.ok) {
       let msg = "", code = "";
       try { const j = JSON.parse(txt); msg = j.message || ""; code = j.code || ""; } catch (e) { /* ignore */ }
-      const known = ["INVALID", "EVENT_NOT_FOUND", "EVENT_CLOSED", "ALREADY_ANSWERED", "NAME_TAKEN", "NAME_INITIAL", "FULL", "RATE_LIMIT", "NOT_FOUND"];
+      const known = ["INVALID", "EVENT_NOT_FOUND", "EVENT_CLOSED", "ALREADY_ANSWERED", "NAME_TAKEN", "FULL", "NOT_STARTED", "CLOSED", "RATE_LIMIT", "NOT_FOUND"];
       if (known.includes(msg)) throw fail(msg);
       // table ou fonction absente : supabase.sql n'a pas été relancé après une mise à jour du site
       if (["PGRST205", "PGRST202", "42P01", "42883"].includes(code) || res.status === 404 || /could not find|does not exist/i.test(msg)) {
@@ -777,11 +785,285 @@
       await sb(`announcements?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }, true);
     },
 
+    /* =================== Communauté : photos, annonces, signalements, sondages, notifications =================== */
+    /** Envoie une photo de résident dans le stockage public « uploads » (gallery/, reports/, ads/). */
+    async uploadPublic(file, prefix) {
+      if (!["gallery", "reports", "ads"].includes(prefix)) throw fail("INVALID");
+      if (!REMOTE) {
+        const blob = await this.compressImage(file, 700, 0.6);
+        return await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(fail("IMAGE")); r.readAsDataURL(blob); });
+      }
+      const blob = await this.compressImage(file);
+      if (blob.size > 3 * 1024 * 1024) throw fail("IMAGE");
+      const path = `${prefix}/${new Date().getFullYear()}/${crypto.randomUUID ? crypto.randomUUID() : uid()}.jpg`;
+      let res;
+      try {
+        res = await fetch(`${BASE}/storage/v1/object/uploads/${path}`, {
+          method: "POST",
+          headers: { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${cfg.supabaseAnonKey}`, "Content-Type": "image/jpeg", "x-upsert": "false" },
+          body: blob
+        });
+      } catch (e) { throw fail("NETWORK"); }
+      if (!res.ok) throw fail(res.status === 400 || res.status === 403 ? "RATE_LIMIT" : "UPLOAD");
+      return path;
+    },
+    /** Adresse affichable d'une photo de résident (vide si le chemin est inattendu). */
+    uploadUrl(path) {
+      if (!path) return "";
+      if (path.startsWith("data:image/")) return path;
+      if (REMOTE && /^(gallery|reports|ads)\/[0-9]{4}\/[0-9a-f-]{36}\.jpg$/.test(path)) return `${BASE}/storage/v1/object/public/uploads/${path}`;
+      return "";
+    },
+    async removeUpload(path) {
+      if (!REMOTE || !path || !/^(gallery|reports|ads)\/[0-9]{4}\/[0-9a-f-]{36}\.jpg$/.test(path)) return;
+      const tk = await token();
+      if (!tk) return;
+      try { await fetch(`${BASE}/storage/v1/object/uploads/${path}`, { method: "DELETE", headers: { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${tk}` } }); } catch (e) { /* ignore */ }
+    },
+
+    /* ----- Galerie ----- */
+    async listPhotos(eventId) {
+      if (!REMOTE) return local.read(LS_PHOTOS, []).filter((p) => p.eventId === eventId && p.status === "approved");
+      return (await rpc("public_photos", { p_event_id: eventId })).map((p) => ({ id: p.id, path: p.path, caption: p.caption, createdAt: p.created_at }));
+    },
+    async submitPhoto(eventId, file, caption) {
+      if (!REMOTE) {
+        const ev = local.events().find((e) => e.id === eventId);
+        if (!ev) throw fail("EVENT_NOT_FOUND");
+        if (new Date(ev.start) > new Date()) throw fail("NOT_STARTED");
+        const all = local.read(LS_PHOTOS, []);
+        const dev = hashLocal(device());
+        if (all.filter((p) => p.device === dev && Date.now() - new Date(p.createdAt) < 864e5).length >= 15) throw fail("RATE_LIMIT");
+        const path = await this.uploadPublic(file, "gallery");
+        all.push({ id: uid(), eventId, path, caption: String(caption || "").slice(0, 140), status: "pending", device: dev, createdAt: new Date().toISOString() });
+        local.write(LS_PHOTOS, all);
+        if (local.read(LS_PHOTOS, []).length !== all.length) throw fail("STORAGE");
+        return;
+      }
+      const path = await this.uploadPublic(file, "gallery");
+      await rpc("submit_photo", { p_event_id: eventId, p_device: device(), p_path: path, p_caption: String(caption || "").slice(0, 140) });
+    },
+    async adminListPhotos() {
+      if (!REMOTE) return local.read(LS_PHOTOS, []);
+      const rows = await sb("event_photos?select=id,event_id,path,caption,status,created_at&order=created_at.desc&limit=300", {}, true);
+      return rows.map((p) => ({ id: p.id, eventId: p.event_id, path: p.path, caption: p.caption, status: p.status, createdAt: p.created_at }));
+    },
+    async setPhotoStatus(id, status) {
+      if (!REMOTE) { const all = local.read(LS_PHOTOS, []); const p = all.find((x) => x.id === id); if (p) p.status = status; local.write(LS_PHOTOS, all); return; }
+      await sb(`event_photos?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ status }) }, true);
+    },
+    async deletePhoto(photo) {
+      if (!REMOTE) { local.write(LS_PHOTOS, local.read(LS_PHOTOS, []).filter((x) => x.id !== photo.id)); return; }
+      await sb(`event_photos?id=eq.${encodeURIComponent(photo.id)}`, { method: "DELETE" }, true);
+      await this.removeUpload(photo.path);
+    },
+
+    /* ----- Petites annonces ----- */
+    async listClassifieds() {
+      if (!REMOTE) {
+        const dev = hashLocal(device());
+        return local.read(LS_ADS, []).filter((a) => new Date(a.expiresAt) > new Date())
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((a) => ({ ...a, isMine: a.device === dev }));
+      }
+      return (await rpc("public_classifieds", { p_device: device() })).map((a) => ({
+        id: a.id, kind: a.kind, title: a.title, body: a.body, contact: a.contact, name: a.name, photoPath: a.photo_path,
+        createdAt: a.created_at, expiresAt: a.expires_at, isMine: a.is_mine }));
+    },
+    async postClassified(a, photoFile) {
+      const title = String(a.title || "").replace(/\s+/g, " ").trim();
+      if (!["lend", "give", "seek", "help"].includes(a.kind) || title.length < 3 || title.length > 80) throw fail("INVALID");
+      if (!REMOTE) {
+        const all = local.read(LS_ADS, []);
+        const dev = hashLocal(device());
+        if (all.filter((x) => x.device === dev && Date.now() - new Date(x.createdAt) < 864e5).length >= 3) throw fail("RATE_LIMIT");
+        const photoPath = photoFile ? await this.uploadPublic(photoFile, "ads") : null;
+        const now = new Date();
+        all.push({ id: uid(), kind: a.kind, title, body: String(a.body || "").trim().slice(0, 600), contact: String(a.contact || "").trim().slice(0, 80),
+          name: String(a.name || "").trim().slice(0, 40), photoPath, device: dev, createdAt: now.toISOString(), expiresAt: new Date(now.getTime() + 30 * 864e5).toISOString() });
+        local.write(LS_ADS, all);
+        if (local.read(LS_ADS, []).length !== all.length) throw fail("STORAGE");
+        return;
+      }
+      const photoPath = photoFile ? await this.uploadPublic(photoFile, "ads") : null;
+      await rpc("post_classified", { p_device: device(), p_kind: a.kind, p_title: title, p_body: a.body, p_contact: a.contact, p_name: a.name, p_photo: photoPath });
+    },
+    async removeClassified(ad) {
+      if (!REMOTE) { local.write(LS_ADS, local.read(LS_ADS, []).filter((x) => x.id !== ad.id)); return; }
+      if (ad.isMine) await rpc("remove_classified", { p_id: ad.id, p_device: device() });
+      else await sb(`classifieds?id=eq.${encodeURIComponent(ad.id)}`, { method: "DELETE" }, true);
+      if (!ad.isMine) await this.removeUpload(ad.photoPath);
+    },
+
+    /* ----- Signalements ----- */
+    async listReports() {
+      if (!REMOTE) {
+        return local.read(LS_REPORTS, []).filter((r) => !r.hidden && (r.status !== "fixed" || Date.now() - new Date(r.updatedAt) < 14 * 864e5))
+          .sort((a, b) => (a.status === "fixed") - (b.status === "fixed") || b.createdAt.localeCompare(a.createdAt));
+      }
+      return (await rpc("public_reports", {})).map((r) => ({ id: r.id, category: r.category, location: r.location, body: r.body, photoPath: r.photo_path,
+        status: r.status, adminNote: r.admin_note, createdAt: r.created_at, updatedAt: r.updated_at }));
+    },
+    async submitReport(r, photoFile) {
+      const body = String(r.body || "").trim();
+      const cats = ["electricity", "water", "heating", "elevator", "cleanliness", "security", "other"];
+      if (!cats.includes(r.category) || body.length < 5 || body.length > 800) throw fail("INVALID");
+      if (!REMOTE) {
+        const all = local.read(LS_REPORTS, []);
+        const dev = hashLocal(device());
+        if (all.filter((x) => x.device === dev && Date.now() - new Date(x.createdAt) < 864e5).length >= 5) throw fail("RATE_LIMIT");
+        const photoPath = photoFile ? await this.uploadPublic(photoFile, "reports") : null;
+        const now = new Date().toISOString();
+        all.push({ id: uid(), category: r.category, location: String(r.location || "").trim().slice(0, 80), body, name: String(r.name || "").trim().slice(0, 40),
+          photoPath, status: "new", adminNote: "", hidden: false, device: dev, createdAt: now, updatedAt: now });
+        local.write(LS_REPORTS, all);
+        if (local.read(LS_REPORTS, []).length !== all.length) throw fail("STORAGE");
+        return;
+      }
+      const photoPath = photoFile ? await this.uploadPublic(photoFile, "reports") : null;
+      await rpc("submit_report", { p_device: device(), p_category: r.category, p_location: r.location, p_body: body, p_name: r.name, p_photo: photoPath });
+    },
+    async adminListReports() {
+      if (!REMOTE) return local.read(LS_REPORTS, []).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const rows = await sb("reports?select=id,category,location,body,name,photo_path,status,admin_note,hidden,created_at,updated_at&order=created_at.desc&limit=300", {}, true);
+      return rows.map((r) => ({ id: r.id, category: r.category, location: r.location, body: r.body, name: r.name, photoPath: r.photo_path, status: r.status,
+        adminNote: r.admin_note, hidden: r.hidden, createdAt: r.created_at, updatedAt: r.updated_at }));
+    },
+    async updateReport(id, patch) {
+      const clean = {};
+      if (patch.status) clean.status = patch.status;
+      if ("adminNote" in patch) clean.admin_note = String(patch.adminNote || "").slice(0, 300);
+      if ("hidden" in patch) clean.hidden = Boolean(patch.hidden);
+      clean.updated_at = new Date().toISOString();
+      if (!REMOTE) {
+        const all = local.read(LS_REPORTS, []); const r = all.find((x) => x.id === id);
+        if (r) Object.assign(r, { status: clean.status || r.status, adminNote: "admin_note" in clean ? clean.admin_note : r.adminNote, hidden: "hidden" in clean ? clean.hidden : r.hidden, updatedAt: clean.updated_at });
+        local.write(LS_REPORTS, all); return;
+      }
+      await sb(`reports?id=eq.${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(clean) }, true);
+    },
+    async deleteReport(r) {
+      if (!REMOTE) { local.write(LS_REPORTS, local.read(LS_REPORTS, []).filter((x) => x.id !== r.id)); return; }
+      await sb(`reports?id=eq.${encodeURIComponent(r.id)}`, { method: "DELETE" }, true);
+      await this.removeUpload(r.photoPath);
+    },
+
+    /* ----- Sondages ----- */
+    async listPolls() {
+      if (!REMOTE) {
+        const votes = local.read(LS_POLL_VOTES, {});
+        const dev = hashLocal(device());
+        return local.read(LS_POLLS, []).filter((p) => p.published).map((p) => {
+          const v = votes[p.id] || {};
+          const counts = {};
+          Object.values(v).forEach((o) => (counts[o] = (counts[o] || 0) + 1));
+          return { ...p, counts, total: Object.keys(v).length, myChoice: v[dev] || null };
+        }).sort((a, b) => (isClosed(a) - isClosed(b)) || b.createdAt.localeCompare(a.createdAt));
+      }
+      return (await rpc("public_polls", { p_device: device() })).map((p) => ({ id: p.id, question: p.question, question_en: p.question_en, options: p.options,
+        endsAt: p.ends_at, createdAt: p.created_at, counts: p.counts || {}, total: p.total, myChoice: p.my_choice }));
+    },
+    async votePoll(id, option) {
+      if (!REMOTE) {
+        const p = local.read(LS_POLLS, []).find((x) => x.id === id && x.published);
+        if (!p) throw fail("NOT_FOUND");
+        if (isClosed(p)) throw fail("CLOSED");
+        if (option && !p.options.some((o) => o.id === option)) throw fail("INVALID");
+        const votes = local.read(LS_POLL_VOTES, {});
+        const dev = hashLocal(device());
+        votes[id] = votes[id] || {};
+        if (option) votes[id][dev] = option; else delete votes[id][dev];
+        local.write(LS_POLL_VOTES, votes);
+        return;
+      }
+      await rpc("vote_poll", { p_id: id, p_device: device(), p_option: option || "" });
+    },
+    async adminListPolls() {
+      if (!REMOTE) {
+        const votes = local.read(LS_POLL_VOTES, {});
+        return local.read(LS_POLLS, []).map((p) => { const counts = {}; Object.values(votes[p.id] || {}).forEach((o) => (counts[o] = (counts[o] || 0) + 1)); return { ...p, counts, total: Object.keys(votes[p.id] || {}).length }; })
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      }
+      const [rows, votes] = await Promise.all([
+        sb("polls?select=*&order=created_at.desc", {}, true),
+        sb("poll_votes?select=poll_id,option_id", {}, true).catch(() => [])
+      ]);
+      return rows.map((p) => {
+        const counts = {}; let total = 0;
+        votes.filter((v) => v.poll_id === p.id).forEach((v) => { counts[v.option_id] = (counts[v.option_id] || 0) + 1; total++; });
+        return { id: p.id, question: p.question, question_en: p.question_en, options: p.options, endsAt: p.ends_at, published: p.published, createdAt: p.created_at, counts, total };
+      });
+    },
+    async savePoll(p) {
+      const options = (p.options || []).map((o, i) => ({ id: o.id || `o${i + 1}${Math.random().toString(36).slice(2, 6)}`, label: String(o.label || "").trim().slice(0, 80), label_en: String(o.label_en || "").trim().slice(0, 80) }))
+        .filter((o) => o.label);
+      const row = { question: String(p.question || "").trim().slice(0, 160), question_en: String(p.question_en || "").trim().slice(0, 160), options,
+        endsAt: p.endsAt || null, published: p.published !== false };
+      if (row.question.length < 3 || options.length < 2 || options.length > 8) throw fail("INVALID");
+      if (!REMOTE) {
+        const all = local.read(LS_POLLS, []);
+        const i = all.findIndex((x) => x.id === p.id);
+        if (i >= 0) all[i] = { ...all[i], ...row }; else all.push({ ...row, id: uid(), createdAt: new Date().toISOString() });
+        local.write(LS_POLLS, all); return;
+      }
+      const body = JSON.stringify({ question: row.question, question_en: row.question_en, options: row.options, ends_at: row.endsAt, published: row.published });
+      if (p.id) await sb(`polls?id=eq.${encodeURIComponent(p.id)}`, { method: "PATCH", body }, true);
+      else await sb("polls", { method: "POST", body }, true);
+    },
+    async deletePoll(id) {
+      if (!REMOTE) { local.write(LS_POLLS, local.read(LS_POLLS, []).filter((x) => x.id !== id)); return; }
+      await sb(`polls?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" }, true);
+    },
+
+    /* ----- Notifications ----- */
+    async getPushKey() {
+      if (!REMOTE) return (local.read(LS_PUSH, {}) || {}).vapidPublic || "";
+      const r = await sb("settings?select=data&key=eq.push").catch(() => []);
+      return (r[0] && r[0].data && r[0].data.vapidPublic) || "";
+    },
+    async savePushKey(vapidPublic) {
+      if (!/^[A-Za-z0-9_-]{80,100}$/.test(vapidPublic)) throw fail("INVALID");
+      if (!REMOTE) { local.write(LS_PUSH, { vapidPublic }); return; }
+      await sb("settings?key=eq.push", { method: "PATCH", body: JSON.stringify({ data: { vapidPublic }, updated_at: new Date().toISOString() }) }, true);
+    },
+    async pushSubscribe(sub, lang) {
+      const j = sub.toJSON();
+      if (!REMOTE) { local.write(LS_PUSH_SUB, { endpoint: j.endpoint, lang }); return; }
+      await rpc("push_subscribe", { p_device: device(), p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_lang: lang });
+    },
+    async pushUnsubscribe(endpoint) {
+      if (!REMOTE) { try { localStorage.removeItem(LS_PUSH_SUB); } catch (e) { /* ignore */ } return; }
+      await rpc("push_unsubscribe", { p_endpoint: endpoint }).catch(() => {});
+    },
+    async pushCount() {
+      if (!REMOTE) return local.read(LS_PUSH_SUB, null) ? 1 : 0;
+      const rows = await sb("push_subscriptions?select=endpoint", {}, true);
+      return rows.length;
+    },
+    /** Envoie une notification à tous les abonnés (fonction Supabase « notify »). */
+    async sendPush(msg) {
+      if (!REMOTE) throw fail("PUSH_DEMO");
+      const tk = await token();
+      if (!tk) throw fail("AUTH");
+      let res;
+      try {
+        res = await fetch(`${BASE}/functions/v1/notify`, {
+          method: "POST",
+          headers: { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${tk}`, "Content-Type": "application/json" },
+          body: JSON.stringify(msg)
+        });
+      } catch (e) { throw fail("PUSH_SERVER"); }
+      const out = await res.json().catch(() => ({}));
+      if (res.status === 403) throw fail("AUTH");
+      if (res.status === 404) throw fail("PUSH_SERVER");
+      if (!res.ok) throw fail(out.error === "VAPID_MISSING" ? "PUSH_KEYS" : "PUSH_SERVER");
+      return out;
+    },
+
     resetDemo() {
       if (REMOTE) return;
       local.write(LS_EVENTS, seedEvents());
       local.write(LS_RESP, []);
-      [LS_PROPOSALS, LS_VOTES, LS_GUIDE, LS_POT, LS_POT_ENTRIES, LS_INV_GROUPS, LS_INV_ITEMS, LS_ANNOUNCE].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
+      [LS_PROPOSALS, LS_VOTES, LS_GUIDE, LS_PHOTOS, LS_ADS, LS_REPORTS, LS_POLLS, LS_POLL_VOTES, LS_POT, LS_POT_ENTRIES, LS_INV_GROUPS, LS_INV_ITEMS, LS_ANNOUNCE].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
     },
 
     uid

@@ -119,6 +119,68 @@ supprimées, stockage Supabase `guide`). Mise en forme simple : `## intertitre`,
 Le texte est échappé avant mise en forme (pas d'injection de code possible).
 Les langues autres que le français affichent la version anglaise de l'article.
 
+## Rappels avant un événement
+
+Sur chaque événement à venir : **Ajouter à mon agenda**, avec deux options.
+- **Google Agenda** : un lien direct.
+- **iPhone / Outlook** : un fichier `.ics` à l'heure de Paris, avec un rappel automatique 2 h avant.
+
+Les organisateurs peuvent aussi envoyer une **notification** de rappel (voir plus bas).
+
+## Galerie photos
+
+Une fois l'événement commencé, chacun peut ajouter ses photos sur la page de l'événement.
+- Les photos sont ré-encodées en JPEG sur le téléphone, ce qui supprime les métadonnées GPS. Taille maximale : 3 Mo.
+- Elles restent invisibles tant qu'un organisateur ne les a pas validées dans **Organiser → Photos**.
+
+## Petites annonces
+
+Onglet **Annonces** : Je prête, Je donne, Je cherche, Un coup de main.
+- Une annonce a un titre, des détails, un moyen de contact (l'avertissement « pas de téléphone ni d'appartement » est affiché), un prénom facultatif et une photo.
+- Elle expire au bout de 30 jours.
+- L'auteur peut la retirer depuis son appareil. L'organisateur peut retirer n'importe quelle annonce (**Organiser → Annonces**).
+
+## Signalement d'un problème
+
+Onglet **Plus → Signaler un problème** : catégorie, lieu, description et photo.
+- Un rappel « urgence = 112 » est affiché.
+- La liste publique montre les problèmes en cours avec leur statut (Signalé → Transmis → Réparé) et la réponse de l'organisateur. Le prénom du déclarant n'est visible que des organisateurs.
+- Le suivi se fait dans **Organiser → Signalements**.
+
+## Sondages rapides
+
+Les organisateurs créent un sondage dans **Organiser → Sondages** :
+- une question, de 2 à 8 réponses (une par ligne, `français | anglais`) et une date de fin facultative ;
+- une seule voix par appareil, modifiable ;
+- le sondage en cours s'affiche aussi sur l'accueil.
+
+## Appli (Android et iPhone) et notifications
+
+Le site s'installe comme une application : la page **Plus → Appli & notifications** donne les étapes pour iPhone (Safari) et pour Android (Chrome).
+- Les notifications fonctionnent sur Android et ordinateur.
+- Sur iPhone, il faut **iOS 16.4 ou plus**, avec l'appli installée sur l'écran d'accueil.
+- Aucune donnée personnelle n'est stockée : seulement l'adresse technique d'envoi.
+
+Mise en service, une seule fois :
+1. Relancer `supabase.sql` dans Supabase → SQL Editor.
+2. Aller dans **Organiser → Tableau de bord → Notifications** et cliquer **Générer les clés**. La clé publique est enregistrée automatiquement.
+3. Dans Supabase → Edge Functions → Secrets, ajouter :
+   - `VAPID_PUBLIC_KEY` et `VAPID_PRIVATE_KEY` (les valeurs affichées à l'étape 2) ;
+   - `VAPID_SUBJECT` = `mailto:` suivi de votre adresse.
+4. Toujours dans Edge Functions, créer la fonction **`notify`** et y coller `supabase/functions/notify/index.ts`, puis la déployer.
+
+Ensuite, le **Tableau de bord** permet d'envoyer une notification (titre, texte, page à ouvrir) à tous les abonnés.
+
+## Tableau de bord organisateur
+
+**Organiser** ouvre un tableau de bord qui regroupe :
+- les chiffres clés : événements à venir, réponses, solde du pot, abonnés aux notifications ;
+- une liste « À traiter » : photos à valider, signalements ouverts, nouvelles idées ;
+- les prochains événements, avec la part des besoins couverts ;
+- la participation par événement (graphique et tableau) ;
+- les idées les plus aimées, le pot, les articles en rupture, les sondages ouverts ;
+- l'envoi de notifications.
+
 ## Confidentialité
 
 - Pas de compte pour répondre, **pas de numéro d'appartement**.

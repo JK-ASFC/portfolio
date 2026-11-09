@@ -682,6 +682,347 @@ After start-up, the temperature takes a little while to settle. If after **48 ho
   $g$[{"path": "img/guide/thermostat-molette.jpg", "caption": "La molette du thermostat", "caption_en": "The thermostat dial"}, {"path": "img/guide/thermostat-ecran.jpg", "caption": "L'écran du thermostat (repères 1 à 6)", "caption_en": "The thermostat screen (markers 1 to 6)"}]$g$::jsonb, 1)
 on conflict (id) do nothing;
 
+-- =============================================================
+-- ENVOIS DE PHOTOS PAR LES RÉSIDENTS (galerie, signalements, annonces)
+-- Stockage public « uploads » : JPEG ré-encodé par le site, 3 Mo max,
+-- noms aléatoires imprévisibles, plafond global d'envois par heure.
+-- Une photo n'apparaît sur le site qu'une fois rattachée par une fonction contrôlée
+-- (et, pour la galerie, validée par un organisateur).
+-- =============================================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('uploads', 'uploads', true, 3145728, array['image/jpeg'])
+on conflict (id) do update set public = true, file_size_limit = 3145728, allowed_mime_types = array['image/jpeg'];
+
+create or replace function public.leone_upload_allowed(p_name text) returns boolean
+language sql stable security definer set search_path = public, storage as $$
+  select coalesce(p_name, '') ~ '^(gallery|reports|ads)/[0-9]{4}/[0-9a-f-]{36}\.jpg$'
+     and (select count(*) from storage.objects
+          where bucket_id = 'uploads' and created_at > now() - interval '1 hour') < 80;
+$$;
+create or replace function public.leone_upload_exists(p_name text) returns boolean
+language sql stable security definer set search_path = public, storage as $$
+  select exists (select 1 from storage.objects where bucket_id = 'uploads' and name = p_name);
+$$;
+drop policy if exists "uploads public insert" on storage.objects;
+drop policy if exists "uploads admin delete" on storage.objects;
+create policy "uploads public insert" on storage.objects for insert to anon, authenticated
+  with check (bucket_id = 'uploads' and public.leone_upload_allowed(name));
+create policy "uploads admin delete" on storage.objects for delete to authenticated
+  using (bucket_id = 'uploads' and public.is_admin());
+
+-- =============================================================
+-- GALERIE PHOTOS DES ÉVÉNEMENTS (validées par un organisateur)
+-- =============================================================
+create table if not exists public.event_photos (
+  id          uuid primary key default gen_random_uuid(),
+  event_id    text not null references public.events(id) on delete cascade,
+  path        text not null unique check (path ~ '^gallery/[0-9]{4}/[0-9a-f-]{36}\.jpg$'),
+  caption     text not null default '' check (length(caption) <= 140),
+  status      text not null default 'pending' check (status in ('pending', 'approved')),
+  device_hash text not null,
+  ip_hash     text,
+  created_at  timestamptz not null default now()
+);
+create index if not exists event_photos_event_idx on public.event_photos(event_id, status);
+alter table public.event_photos enable row level security;
+drop policy if exists "event photos admin" on public.event_photos;
+create policy "event photos admin" on public.event_photos for all using (public.is_admin()) with check (public.is_admin());
+revoke all on public.event_photos from anon;
+
+create or replace function public.public_photos(p_event_id text)
+returns table (id uuid, path text, caption text, created_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.path, p.caption, p.created_at from event_photos p
+  where p.event_id = p_event_id and p.status = 'approved' order by p.created_at;
+$$;
+
+-- Erreurs : INVALID, EVENT_NOT_FOUND, NOT_STARTED, RATE_LIMIT
+create or replace function public.submit_photo(p_event_id text, p_device text, p_path text, p_caption text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare dev text; ev jsonb; rid uuid;
+begin
+  if p_device is null or p_device !~ '^[0-9a-f]{32,128}$' then raise exception 'INVALID'; end if;
+  if coalesce(p_path, '') !~ '^gallery/[0-9]{4}/[0-9a-f-]{36}\.jpg$' or not public.leone_upload_exists(p_path) then raise exception 'INVALID'; end if;
+  select data into ev from events where id = p_event_id;
+  if ev is null then raise exception 'EVENT_NOT_FOUND'; end if;
+  if ((ev->>'start')::timestamp at time zone 'Europe/Paris') > now() then raise exception 'NOT_STARTED'; end if;
+  dev := public.leone_hash(p_device);
+  if (select count(*) from event_photos where device_hash = dev and created_at > now() - interval '24 hours') >= 15 then
+    raise exception 'RATE_LIMIT';
+  end if;
+  insert into event_photos (event_id, path, caption, device_hash, ip_hash)
+  values (p_event_id, p_path, left(trim(coalesce(p_caption, '')), 140), dev, public.leone_client_ip_hash())
+  returning id into rid;
+  return jsonb_build_object('id', rid);
+end;
+$$;
+
+-- =============================================================
+-- PETITES ANNONCES ENTRE VOISINS (publiées tout de suite, 30 jours)
+-- L'auteur peut retirer son annonce depuis son appareil ; les organisateurs peuvent tout supprimer.
+-- =============================================================
+create table if not exists public.classifieds (
+  id          uuid primary key default gen_random_uuid(),
+  kind        text not null check (kind in ('lend', 'give', 'seek', 'help')),
+  title       text not null check (length(title) between 3 and 80),
+  body        text not null default '' check (length(body) <= 600),
+  contact     text not null default '' check (length(contact) <= 80),
+  name        text not null default '' check (length(name) <= 40),
+  photo_path  text check (photo_path is null or photo_path ~ '^ads/[0-9]{4}/[0-9a-f-]{36}\.jpg$'),
+  device_hash text not null,
+  ip_hash     text,
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz not null default now() + interval '30 days'
+);
+alter table public.classifieds enable row level security;
+drop policy if exists "classifieds admin" on public.classifieds;
+create policy "classifieds admin" on public.classifieds for all using (public.is_admin()) with check (public.is_admin());
+revoke all on public.classifieds from anon;
+
+create or replace function public.public_classifieds(p_device text default null)
+returns table (id uuid, kind text, title text, body text, contact text, name text, photo_path text,
+               created_at timestamptz, expires_at timestamptz, is_mine boolean)
+language sql stable security definer set search_path = public as $$
+  select c.id, c.kind, c.title, c.body, c.contact, c.name, c.photo_path, c.created_at, c.expires_at,
+         (coalesce(p_device, '') ~ '^[0-9a-f]{32,128}$' and c.device_hash = public.leone_hash(p_device))
+  from classifieds c where c.expires_at > now() order by c.created_at desc limit 100;
+$$;
+
+create or replace function public.post_classified(p_device text, p_kind text, p_title text, p_body text,
+                                                  p_contact text, p_name text, p_photo text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare dev text; ip text; rid uuid;
+begin
+  if p_device is null or p_device !~ '^[0-9a-f]{32,128}$' then raise exception 'INVALID'; end if;
+  if p_kind not in ('lend', 'give', 'seek', 'help') then raise exception 'INVALID'; end if;
+  p_title := trim(regexp_replace(coalesce(p_title, ''), '\s+', ' ', 'g'));
+  if length(p_title) not between 3 and 80 then raise exception 'INVALID'; end if;
+  if p_photo is not null and p_photo <> '' and (p_photo !~ '^ads/[0-9]{4}/[0-9a-f-]{36}\.jpg$' or not public.leone_upload_exists(p_photo)) then
+    raise exception 'INVALID';
+  end if;
+  dev := public.leone_hash(p_device);
+  if (select count(*) from classifieds where device_hash = dev and created_at > now() - interval '24 hours') >= 3 then
+    raise exception 'RATE_LIMIT';
+  end if;
+  ip := public.leone_client_ip_hash();
+  if ip is not null and (select count(*) from classifieds where ip_hash = ip and created_at > now() - interval '1 hour') >= 10 then
+    raise exception 'RATE_LIMIT';
+  end if;
+  insert into classifieds (kind, title, body, contact, name, photo_path, device_hash, ip_hash)
+  values (p_kind, p_title, left(trim(coalesce(p_body, '')), 600), left(trim(coalesce(p_contact, '')), 80),
+          left(trim(coalesce(p_name, '')), 40), nullif(p_photo, ''), dev, ip)
+  returning id into rid;
+  return jsonb_build_object('id', rid);
+end;
+$$;
+
+create or replace function public.remove_classified(p_id uuid, p_device text)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  if p_device is null or p_device !~ '^[0-9a-f]{32,128}$' then raise exception 'INVALID'; end if;
+  delete from classifieds where id = p_id and device_hash = public.leone_hash(p_device);
+  if not found then raise exception 'NOT_FOUND'; end if;
+  return true;
+end;
+$$;
+
+-- =============================================================
+-- SIGNALEMENTS DE PROBLÈMES (suivi public, sans nom)
+-- =============================================================
+create table if not exists public.reports (
+  id          uuid primary key default gen_random_uuid(),
+  category    text not null check (category in ('electricity', 'water', 'heating', 'elevator', 'cleanliness', 'security', 'other')),
+  location    text not null default '' check (length(location) <= 80),
+  body        text not null check (length(body) between 5 and 800),
+  name        text not null default '' check (length(name) <= 40),
+  photo_path  text check (photo_path is null or photo_path ~ '^reports/[0-9]{4}/[0-9a-f-]{36}\.jpg$'),
+  status      text not null default 'new' check (status in ('new', 'forwarded', 'fixed')),
+  admin_note  text not null default '' check (length(admin_note) <= 300),
+  hidden      boolean not null default false,
+  device_hash text not null,
+  ip_hash     text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+alter table public.reports enable row level security;
+drop policy if exists "reports admin" on public.reports;
+create policy "reports admin" on public.reports for all using (public.is_admin()) with check (public.is_admin());
+revoke all on public.reports from anon;
+
+-- Liste publique : ni nom ni empreinte ; les problèmes réparés restent visibles 14 jours
+create or replace function public.public_reports()
+returns table (id uuid, category text, location text, body text, photo_path text, status text,
+               admin_note text, created_at timestamptz, updated_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select r.id, r.category, r.location, r.body, r.photo_path, r.status, r.admin_note, r.created_at, r.updated_at
+  from reports r
+  where not r.hidden and (r.status <> 'fixed' or r.updated_at > now() - interval '14 days')
+  order by (r.status = 'fixed'), r.created_at desc limit 100;
+$$;
+
+create or replace function public.submit_report(p_device text, p_category text, p_location text, p_body text,
+                                                p_name text, p_photo text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare dev text; ip text; rid uuid;
+begin
+  if p_device is null or p_device !~ '^[0-9a-f]{32,128}$' then raise exception 'INVALID'; end if;
+  if p_category not in ('electricity', 'water', 'heating', 'elevator', 'cleanliness', 'security', 'other') then raise exception 'INVALID'; end if;
+  p_body := trim(coalesce(p_body, ''));
+  if length(p_body) not between 5 and 800 then raise exception 'INVALID'; end if;
+  if p_photo is not null and p_photo <> '' and (p_photo !~ '^reports/[0-9]{4}/[0-9a-f-]{36}\.jpg$' or not public.leone_upload_exists(p_photo)) then
+    raise exception 'INVALID';
+  end if;
+  dev := public.leone_hash(p_device);
+  if (select count(*) from reports where device_hash = dev and created_at > now() - interval '24 hours') >= 5 then
+    raise exception 'RATE_LIMIT';
+  end if;
+  ip := public.leone_client_ip_hash();
+  if ip is not null and (select count(*) from reports where ip_hash = ip and created_at > now() - interval '1 hour') >= 15 then
+    raise exception 'RATE_LIMIT';
+  end if;
+  insert into reports (category, location, body, name, photo_path, device_hash, ip_hash)
+  values (p_category, left(trim(coalesce(p_location, '')), 80), p_body, left(trim(coalesce(p_name, '')), 40), nullif(p_photo, ''), dev, ip)
+  returning id into rid;
+  return jsonb_build_object('id', rid);
+end;
+$$;
+
+-- =============================================================
+-- SONDAGES (créés par les organisateurs, un vote par appareil)
+-- =============================================================
+create or replace function public.leone_valid_poll_options(p jsonb) returns boolean
+language sql immutable as $$
+  select jsonb_typeof(p) = 'array' and jsonb_array_length(p) between 2 and 8 and coalesce((
+    select bool_and(jsonb_typeof(e) = 'object' and (e->>'id') ~ '^[a-z0-9]{1,12}$'
+                    and length(coalesce(e->>'label', '')) between 1 and 80 and length(coalesce(e->>'label_en', '')) <= 80)
+    from jsonb_array_elements(p) e), false);
+$$;
+create table if not exists public.polls (
+  id          uuid primary key default gen_random_uuid(),
+  question    text not null check (length(question) between 3 and 160),
+  question_en text not null default '' check (length(question_en) <= 160),
+  options     jsonb not null check (public.leone_valid_poll_options(options)),
+  ends_at     timestamptz,
+  published   boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+create table if not exists public.poll_votes (
+  poll_id     uuid not null references public.polls(id) on delete cascade,
+  device_hash text not null,
+  option_id   text not null,
+  ip_hash     text,
+  created_at  timestamptz not null default now(),
+  primary key (poll_id, device_hash)
+);
+create index if not exists poll_votes_ip_idx on public.poll_votes(ip_hash, created_at);
+alter table public.polls enable row level security;
+alter table public.poll_votes enable row level security;
+drop policy if exists "polls admin" on public.polls;
+drop policy if exists "poll votes admin" on public.poll_votes;
+create policy "polls admin" on public.polls for all using (public.is_admin()) with check (public.is_admin());
+create policy "poll votes admin" on public.poll_votes for all using (public.is_admin()) with check (public.is_admin());
+revoke all on public.polls from anon;
+revoke all on public.poll_votes from anon;
+
+create or replace function public.public_polls(p_device text default null)
+returns table (id uuid, question text, question_en text, options jsonb, ends_at timestamptz, created_at timestamptz,
+               counts jsonb, total int, my_choice text)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.question, p.question_en, p.options, p.ends_at, p.created_at,
+    coalesce((select jsonb_object_agg(option_id, n) from (select option_id, count(*) n from poll_votes v where v.poll_id = p.id group by option_id) s), '{}'::jsonb),
+    (select count(*) from poll_votes v where v.poll_id = p.id)::int,
+    (select v.option_id from poll_votes v where v.poll_id = p.id
+       and coalesce(p_device, '') ~ '^[0-9a-f]{32,128}$' and v.device_hash = public.leone_hash(p_device))
+  from polls p where p.published
+  order by (p.ends_at is not null and p.ends_at < now()), p.created_at desc limit 30;
+$$;
+
+-- Voter (p_option vide = retirer son vote). Erreurs : INVALID, NOT_FOUND, CLOSED, RATE_LIMIT
+create or replace function public.vote_poll(p_id uuid, p_device text, p_option text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare pl polls%rowtype; dev text; ip text;
+begin
+  if p_device is null or p_device !~ '^[0-9a-f]{32,128}$' then raise exception 'INVALID'; end if;
+  select * into pl from polls where id = p_id and published;
+  if pl.id is null then raise exception 'NOT_FOUND'; end if;
+  if pl.ends_at is not null and pl.ends_at < now() then raise exception 'CLOSED'; end if;
+  dev := public.leone_hash(p_device);
+  if coalesce(p_option, '') = '' then
+    delete from poll_votes where poll_id = p_id and device_hash = dev;
+  else
+    if not exists (select 1 from jsonb_array_elements(pl.options) e where e->>'id' = p_option) then raise exception 'INVALID'; end if;
+    ip := public.leone_client_ip_hash();
+    if ip is not null and (select count(*) from poll_votes where ip_hash = ip and created_at > now() - interval '10 minutes') >= 120 then
+      raise exception 'RATE_LIMIT';
+    end if;
+    insert into poll_votes (poll_id, device_hash, option_id, ip_hash) values (p_id, dev, p_option, ip)
+    on conflict (poll_id, device_hash) do update set option_id = excluded.option_id, created_at = now();
+  end if;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- =============================================================
+-- NOTIFICATIONS (appli installée sur Android / iPhone)
+-- Abonnements enregistrés par le site ; envoi par la fonction Supabase « notify »
+-- (supabase/functions/notify), réservée aux organisateurs.
+-- =============================================================
+create table if not exists public.push_subscriptions (
+  endpoint    text primary key,
+  p256dh      text not null check (length(p256dh) between 20 and 200),
+  auth        text not null check (length(auth) between 8 and 100),
+  lang        text not null default 'fr' check (length(lang) <= 10),
+  device_hash text not null,
+  created_at  timestamptz not null default now()
+);
+-- adresse d'abonnement : https uniquement, 800 caractères max
+alter table public.push_subscriptions drop constraint if exists push_subscriptions_endpoint_check;
+alter table public.push_subscriptions add constraint push_subscriptions_endpoint_check
+  check (endpoint ~ '^https://[^\s"<>]+$' and length(endpoint) between 20 and 800);
+alter table public.push_subscriptions enable row level security;
+drop policy if exists "push admin" on public.push_subscriptions;
+create policy "push admin" on public.push_subscriptions for all using (public.is_admin()) with check (public.is_admin());
+revoke all on public.push_subscriptions from anon;
+
+create or replace function public.push_subscribe(p_device text, p_endpoint text, p_p256dh text, p_auth text, p_lang text)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare dev text;
+begin
+  if p_device is null or p_device !~ '^[0-9a-f]{32,128}$' then raise exception 'INVALID'; end if;
+  dev := public.leone_hash(p_device);
+  if (select count(*) from push_subscriptions where device_hash = dev) >= 5 then
+    delete from push_subscriptions where endpoint in (select endpoint from push_subscriptions where device_hash = dev order by created_at limit 1);
+  end if;
+  insert into push_subscriptions (endpoint, p256dh, auth, lang, device_hash)
+  values (p_endpoint, p_p256dh, p_auth, left(coalesce(p_lang, 'fr'), 10), dev)
+  on conflict (endpoint) do update set p256dh = excluded.p256dh, auth = excluded.auth, lang = excluded.lang, device_hash = excluded.device_hash;
+  return true;
+end;
+$$;
+create or replace function public.push_unsubscribe(p_endpoint text)
+returns boolean language sql security definer set search_path = public as $$
+  delete from push_subscriptions where endpoint = p_endpoint returning true;
+$$;
+
+-- clé publique des notifications (générée dans Organiser → Tableau de bord)
+insert into public.settings (key, data) values ('push', '{"vapidPublic": ""}'::jsonb) on conflict (key) do nothing;
+
+-- ---------- Droits des fonctions publiques ----------
+do $$
+declare f text;
+begin
+  foreach f in array array[
+    'public_photos(text)', 'submit_photo(text, text, text, text)',
+    'public_classifieds(text)', 'post_classified(text, text, text, text, text, text, text)', 'remove_classified(uuid, text)',
+    'public_reports()', 'submit_report(text, text, text, text, text, text)',
+    'public_polls(text)', 'vote_poll(uuid, text, text)',
+    'push_subscribe(text, text, text, text, text)', 'push_unsubscribe(text)'
+  ] loop
+    execute format('revoke all on function public.%s from public', f);
+    execute format('grant execute on function public.%s to anon, authenticated', f);
+  end loop;
+end $$;
+
 -- -------------------------------------------------------------
 -- Exemple : match de l'Équipe de France, jeudi 12 novembre 2026
 -- -------------------------------------------------------------
