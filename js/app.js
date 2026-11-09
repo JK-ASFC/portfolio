@@ -12,16 +12,45 @@
   const EMPTY_STATS = { headcount: 0, replies: 0, brought: {}, attendees: [] };
 
   /* ---------------- Langue ---------------- */
+  // Langues disponibles : js/i18n.js (fr, en) + un fichier par langue dans js/lang/, chargé à la demande.
+  const LANGS = window.LEONE_LANGS;
   const LANG_KEY = "leone.lang";
-  let lang = (() => {
-    try { const s = localStorage.getItem(LANG_KEY); if (s === "fr" || s === "en") return s; } catch (e) { /* ignore */ }
-    return (navigator.language || "fr").toLowerCase().startsWith("fr") ? "fr" : "en";
-  })();
-  const locale = () => (lang === "fr" ? "fr-FR" : "en-GB");
+  const langInfo = (code) => LANGS.find((l) => l.code === code) || LANGS[0];
 
+  /** Langue du système : première langue préférée de l'appareil qu'on sait afficher. */
+  function detectLang() {
+    const prefs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "fr"]).map((x) => String(x).toLowerCase());
+    for (const tag of prefs) {
+      const exact = LANGS.find((l) => l.code.toLowerCase() === tag);
+      if (exact) return exact.code;
+      const base = LANGS.find((l) => l.code.toLowerCase() === tag.split("-")[0]);
+      if (base) return base.code;
+    }
+    return prefs.length ? "en" : "fr"; // langue inconnue : l'anglais est le plus souvent compris
+  }
+  let lang = (() => {
+    try { const s = localStorage.getItem(LANG_KEY); if (s && LANGS.some((l) => l.code === s)) return s; } catch (e) { /* ignore */ }
+    return detectLang();
+  })();
+  const locale = () => langInfo(lang).locale;
+
+  /** Charge js/lang/<code>.js si besoin (script du site, autorisé par la CSP). */
+  function loadLang(code) {
+    if (window.I18N[code]) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      const s = document.createElement("script");
+      s.src = `js/lang/${encodeURIComponent(code)}.js`;
+      s.onload = () => resolve(Boolean(window.I18N[code]));
+      s.onerror = () => resolve(false);
+      document.head.appendChild(s);
+    });
+  }
+
+  // texte : langue choisie → anglais → français
   function t(key, vars = {}) {
-    const dict = window.I18N[lang] || {};
-    const s = key in dict ? dict[key] : (window.I18N.fr[key] ?? key);
+    const chain = [window.I18N[lang], lang !== "fr" ? window.I18N.en : null, window.I18N.fr];
+    let s = key;
+    for (const d of chain) if (d && key in d) { s = d[key]; break; }
     if (typeof s !== "string") return s;
     return s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : `{${k}}`));
   }
@@ -29,27 +58,35 @@
     const plural = lang === "fr" ? n > 1 : n !== 1;
     return t(`${key}_${plural ? "pl" : "sg"}`, { n, ...vars });
   }
-  const loc = (obj, field) => (lang === "en" && obj && obj[`${field}_en`]) || (obj ? obj[field] : "") || "";
-  const locOpts = (q) => (lang === "en" && q.options_en && q.options_en.length === (q.options || []).length ? q.options_en : q.options || []);
+  // contenu écrit par les organisateurs (FR + EN facultatif) : version anglaise pour toutes les autres langues
+  const useEn = () => lang !== "fr";
+  const loc = (obj, field) => (useEn() && obj && obj[`${field}_en`]) || (obj ? obj[field] : "") || "";
+  const locOpts = (q) => (useEn() && q.options_en && q.options_en.length === (q.options || []).length ? q.options_en : q.options || []);
   const errMsg = (err) => t(`err.${err && err.code}`) !== `err.${err && err.code}` ? t(`err.${err.code}`) : t("load.error");
+
+  const langSelect = $("#langSelect");
+  langSelect.innerHTML = LANGS.map((l) => `<option value="${esc(l.code)}" lang="${esc(l.code)}">${esc(l.name)}</option>`).join("");
 
   function applyStatic() {
     document.documentElement.lang = lang;
+    document.documentElement.dir = langInfo(lang).dir || "ltr";
     $$("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
     $$("[data-i18n-html]").forEach((el) => (el.innerHTML = t(el.dataset.i18nHtml)));
     $$("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
-    $$(".lang [data-lang]").forEach((b) => {
-      b.classList.toggle("is-active", b.dataset.lang === lang);
-      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
-    });
+    langSelect.value = lang;
   }
-  $$(".lang [data-lang]").forEach((b) => b.addEventListener("click", () => {
-    if (b.dataset.lang === lang) return;
-    lang = b.dataset.lang;
+  langSelect.addEventListener("change", async () => {
+    const next = langSelect.value;
+    if (next === lang) return;
+    langSelect.disabled = true;
+    const ok = await loadLang(next);
+    langSelect.disabled = false;
+    if (!ok) { langSelect.value = lang; toast(t("load.error")); return; }
+    lang = next;
     try { localStorage.setItem(LANG_KEY, lang); } catch (e) { /* ignore */ }
     applyStatic();
     route(true);
-  }));
+  });
 
   /* ---------------- Mémo local des événements auxquels j'ai répondu (affichage seulement) ---------------- */
   const ANS_KEY = "leone.answered";
@@ -1142,7 +1179,9 @@
     $$(".wa-link").forEach((a) => { a.href = wa; a.hidden = false; });
   }
 
-  applyStatic();
   window.addEventListener("hashchange", () => route());
-  route().then(() => LEONE_EXT.showPopups(ctx));
+  // langue d'abord (chargée si besoin, repli sur l'anglais), puis la page, puis les messages pop-up
+  loadLang(lang)
+    .then((ok) => { if (!ok) lang = "en"; applyStatic(); return route(); })
+    .then(() => LEONE_EXT.showPopups(ctx));
 })();

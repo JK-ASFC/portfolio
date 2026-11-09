@@ -14,6 +14,39 @@ js/app.js         rendu, formulaires, modération
 supabase.sql      schéma, sécurité (RLS + fonctions) et événement d'exemple
 ```
 
+## Langues
+
+20 langues : français, anglais, espagnol, portugais, italien, allemand, polonais, russe, ukrainien,
+turc, arabe (de droite à gauche), hindi, vietnamien, malais, chinois, japonais, coréen, lingala,
+créole guadeloupéen et créole martiniquais.
+
+- **Bascule automatique** selon la langue de l'appareil (sinon anglais) ; choix manuel avec le menu 🌐,
+  mémorisé sur l'appareil.
+- Les textes vus par les résidents sont traduits dans chaque langue (, chargé à la
+  demande). L'espace organisateur reste en français / anglais.
+- Le contenu écrit par les organisateurs (événements, messages…) s'affiche en anglais (si la version
+  anglaise est remplie) pour toutes les langues autres que le français.
+- Ajouter ou corriger une langue : modifier , puis vérifier avec
+  ✓ ar      167/167
+✓ de      167/167
+✓ es      167/167
+✓ gcf-MQ  167/167
+✓ gcf     167/167
+✓ hi      167/167
+✓ it      167/167
+✓ ja      167/167
+✓ ko      167/167
+✓ ln      167/167
+✓ ms      167/167
+✓ pl      167/167
+✓ pt      167/167
+✓ ru      167/167
+✓ tr      167/167
+✓ uk      167/167
+✓ vi      167/167
+✓ zh      167/167 (textes manquants, variables  /  cassées).
+- ⚠ Lingala et créoles : traductions à faire relire par une personne dont c'est la langue.
+
 ## Mise en ligne (GitHub Pages)
 
 1. Fusionner sur `main`.

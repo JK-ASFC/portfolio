@@ -37,10 +37,11 @@
       </div>
     </nav>
     <div class="top-actions">
-      <div class="lang" role="group" data-i18n-aria="lang.label">
-        <button type="button" data-lang="fr" lang="fr" aria-label="Français">FR</button>
-        <button type="button" data-lang="en" lang="en" aria-label="English">EN</button>
-      </div>
+      <label class="lang">
+        <span class="lang-ico" aria-hidden="true">🌐</span>
+        <span class="sr-only" data-i18n="lang.label"></span>
+        <select id="langSelect"></select>
+      </label>
     </div>
   </header>
 

@@ -730,3 +730,32 @@ window.I18N = {
 };
 // les packs sont communs aux deux langues (FR + EN dans chaque ligne)
 ["apero", "repas", "matos"].forEach((k) => (window.I18N.en[`presets.${k}`] = window.I18N.fr[`presets.${k}`]));
+
+// Textes vus par les résidents : ceux qui doivent exister dans chaque langue (js/lang/*.js).
+// Les autres (espace organisateur) s'affichent en anglais dans les autres langues.
+window.I18N_PUBLIC_KEYS = ["meta.title", "skip", "nav.label", "nav.events", "nav.propose", "nav.pot", "nav.infos", "nav.more", "nav.inventory", "nav.guide", "infos.title", "infos.lead", "infos.none", "infos.important", "infos.seeAll", "infos.ok", "inv.title", "inv.lead", "inv.items_sg", "inv.items_pl", "inv.out", "inv.empty", "inv.noGroups", "inv.search", "inv.hint", "guide.title", "guide.soonT", "guide.soonP", "guide.langs", "prop.title", "prop.lead", "prop.what", "prop.whatPh", "prop.desc", "prop.descPh", "prop.when", "prop.whenPh", "prop.needs", "prop.needsPh", "prop.name", "prop.nameHint", "prop.send", "prop.needTitle", "prop.thanksT", "prop.thanksP", "prop.another", "prop.listTitle", "prop.listHint", "prop.listEmpty", "prop.stPending", "prop.stAccepted", "pot.title", "pot.balance", "pot.collected", "pot.give", "pot.via", "pot.closed", "pot.ledger", "pot.ledgerHint", "pot.noEntries", "pot.in", "pot.out", "pot.forEvent", "pot.eventFunded", "pot.see", "pot.personalT", "pot.personalP", "pot.pledgeT", "pot.pledgeP", "pot.ack", "pot.ackFirst", "pot.receipts", "pot.receiptsHint", "pot.noReceipts", "pot.receipt", "pot.noReceipt", "pot.receiptOf", "pot.openFull", "pot.close", "err.IMAGE", "err.UPLOAD", "err.STORAGE", "lang.label", "home.kicker", "wa.join", "wa.footer", "home.title", "filter.aria", "filter.upcoming", "filter.past", "events.noneUpcoming", "events.nonePast", "next.tag", "next.cta", "next.answered", "cd.d", "cd.h", "cd.m", "cd.s", "card.event", "card.answered", "participants_sg", "participants_pl", "neighbour", "footer.privacy", "ev.notFoundT", "ev.notFoundP", "ev.back", "ev.over", "ev.needs", "ev.who", "responses_sg", "responses_pl", "ev.nobody", "guests_sg", "guests_pl", "ev.pastT", "ev.pastP", "ev.full", "status.yes", "status.maybe", "status.no", "form.title", "form.name", "form.namePh", "form.nameHint", "form.showName", "form.showNameHint", "form.coming", "form.yes", "form.maybe", "form.no", "form.guests", "form.bring", "form.left", "form.covered", "form.less", "form.more", "form.other", "form.otherPh", "form.msg", "form.msgHint", "form.submit", "form.update", "form.cancelEdit", "form.needName", "form.saved", "form.updated", "form.tooFast", "mine.title", "mine.text", "mine.edit", "mine.brings", "mine.nothing", "err.INVALID", "err.EVENT_NOT_FOUND", "err.EVENT_CLOSED", "err.ALREADY_ANSWERED", "err.NAME_TAKEN", "err.NAME_INITIAL", "err.FULL", "err.RATE_LIMIT", "err.NOT_FOUND", "err.DB_OUTDATED", "err.NETWORK", "err.AUTH", "load.error"];
+
+// Langues proposées (ordre du menu). dir: "rtl" pour l'écriture de droite à gauche.
+// fr / en sont dans ce fichier ; les autres dans js/lang/<code>.js (chargés à la demande).
+window.LEONE_LANGS = [
+  { code: "fr", name: "Français", locale: "fr-FR" },
+  { code: "en", name: "English", locale: "en-GB" },
+  { code: "es", name: "Español", locale: "es-ES" },
+  { code: "pt", name: "Português", locale: "pt-PT" },
+  { code: "it", name: "Italiano", locale: "it-IT" },
+  { code: "de", name: "Deutsch", locale: "de-DE" },
+  { code: "pl", name: "Polski", locale: "pl-PL" },
+  { code: "ru", name: "Русский", locale: "ru-RU" },
+  { code: "uk", name: "Українська", locale: "uk-UA" },
+  { code: "tr", name: "Türkçe", locale: "tr-TR" },
+  { code: "ar", name: "العربية", locale: "ar-u-nu-latn", dir: "rtl" },
+  { code: "hi", name: "हिन्दी", locale: "hi-IN" },
+  { code: "vi", name: "Tiếng Việt", locale: "vi-VN" },
+  { code: "ms", name: "Bahasa Melayu", locale: "ms-MY" },
+  { code: "zh", name: "中文", locale: "zh-CN" },
+  { code: "ja", name: "日本語", locale: "ja-JP" },
+  { code: "ko", name: "한국어", locale: "ko-KR" },
+  { code: "ln", name: "Lingála", locale: "fr-FR" },
+  { code: "gcf", name: "Kréyòl Gwadloup", locale: "fr-FR" },
+  { code: "gcf-MQ", name: "Kréyòl Matinik", locale: "fr-FR" }
+];
