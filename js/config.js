@@ -28,7 +28,7 @@ window.LEONE_CONFIG = {
 
   // Lien d'invitation du groupe Instagram (Instagram → discussion de groupe → ⓘ →
   // « Inviter via un lien »), ou lien d'un canal / d'un compte. Vide = bouton masqué.
-  instagramGroupUrl: "",
+  instagramGroupUrl: "https://ig.me/j/NgyyaTOo806T8lDp/",
 
   // Créateur du site, affiché en bas de page (pseudo Instagram, sans @)
   creatorInstagram: "kev_kev_jk_"
