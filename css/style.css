@@ -911,3 +911,6 @@ tr:last-child td { border-bottom: 0; }
 .photo-add { margin-bottom: 28px; }
 .photo-add h2 { margin-top: 0; }
 .photo-add-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
+.gal-group { margin-top: 26px; }
+.gal-group .list-head h2 { margin: 0; font-size: 1.25rem; }
+#galleryRoot .filters { margin-top: 6px; }

@@ -1185,7 +1185,7 @@
     try { parts = h.replace(/^#\/?/, "").split("/").map(decodeURIComponent); } catch (e) { parts = []; }
     const [name = "", sub, id] = parts;
     const openIdea = name === "propose"; // ancien lien « Proposer » : accueil + formulaire ouvert
-    const v = ["event", "admin", "pot", "infos", "inventory", "guide", "ads", "report", "polls", "app"].includes(name) ? name : "home";
+    const v = ["event", "admin", "pot", "infos", "inventory", "guide", "ads", "gallery", "report", "polls", "app"].includes(name) ? name : "home";
     setMore(false);
 
     $$(".view").forEach((s) => (s.hidden = s.dataset.view !== v));
@@ -1207,6 +1207,7 @@
       if (v === "inventory") await LEONE_EXT.renderInventory(ctx);
       if (v === "guide") await LEONE_EXT.renderGuide(ctx);
       if (v === "ads") await LEONE_COMM.renderAds(ctx);
+      if (v === "gallery") await LEONE_COMM.renderGalleryPage(ctx);
       if (v === "report") await LEONE_COMM.renderReports(ctx);
       if (v === "polls") await LEONE_COMM.renderPolls(ctx);
       if (v === "app") await LEONE_COMM.renderApp(ctx);
