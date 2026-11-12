@@ -138,6 +138,7 @@ Les organisateurs peuvent aussi envoyer une **notification** de rappel (voir plu
 Une fois l'événement commencé, chacun peut ajouter ses photos sur la page de l'événement.
 - Les photos sont ré-encodées en JPEG sur le téléphone, ce qui supprime les métadonnées GPS. Taille maximale : 3 Mo.
 - Elles restent invisibles tant qu'un organisateur ne les a pas validées dans **Organiser → Photos**.
+- L'organisateur peut aussi ajouter ses propres photos dans **Organiser → Photos → Ajouter des photos** : il choisit l'événement, et ses photos sont publiées tout de suite, même avant le début de l'événement.
 
 ## Petites annonces
 
