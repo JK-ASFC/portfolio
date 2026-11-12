@@ -135,6 +135,8 @@ Les organisateurs peuvent aussi envoyer une **notification** de rappel (voir plu
 
 ## Galerie photos
 
+Onglet **Galerie** : toutes les photos, classées par événement, avec un filtre par événement. Le formulaire « Ajouter des photos » permet de choisir l'**événement de rattachement**. Un résident ne peut choisir qu'un événement déjà commencé, et ses photos attendent une validation. Un organisateur connecté sur le même appareil peut choisir n'importe quel événement, et ses photos sont publiées tout de suite.
+
 Une fois l'événement commencé, chacun peut ajouter ses photos sur la page de l'événement.
 - Les photos sont ré-encodées en JPEG sur le téléphone, ce qui supprime les métadonnées GPS. Taille maximale : 3 Mo.
 - Elles restent invisibles tant qu'un organisateur ne les a pas validées dans **Organiser → Photos**.

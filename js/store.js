@@ -804,7 +804,14 @@
           body: blob
         });
       } catch (e) { throw fail("NETWORK"); }
-      if (!res.ok) throw fail(res.status === 400 || res.status === 403 ? "RATE_LIMIT" : "UPLOAD");
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        console.warn("Envoi photo refusé", res.status, msg);
+        if (/bucket not found/i.test(msg)) throw fail("DB_OUTDATED"); // supabase.sql pas relancé
+        if (res.status === 413 || /too large|size/i.test(msg)) throw fail("IMAGE");
+        if (/row-level security|unauthorized|403/i.test(msg) || res.status === 403) throw fail("RATE_LIMIT");
+        throw fail("UPLOAD");
+      }
       return path;
     },
     /** Adresse affichable d'une photo de résident (vide si le chemin est inattendu). */

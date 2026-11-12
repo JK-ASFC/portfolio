@@ -116,6 +116,79 @@ window.LEONE_COMM = (function () {
     };
   }
 
+  /* ================= GALERIE (onglet) ================= */
+  let galFilter = "all";
+  async function renderGalleryPage(c) {
+    const root = c.$("#galleryRoot");
+    const [events, admin] = await Promise.all([Store.listEvents(), Store.isAdmin()]);
+    const now = new Date();
+    const evs = [...events].sort((a, b) => String(b.start).localeCompare(String(a.start)));
+    const lists = await Promise.all(evs.map((e) => safe(Store.listPhotos(e.id), [])));
+    const groups = evs.map((e, i) => ({ ev: e, photos: lists[i] })).filter((g) => g.photos.length);
+    // l'organisateur peut rattacher à n'importe quel événement ; les résidents, à un événement commencé
+    const choices = admin ? evs : evs.filter((e) => new Date(e.start) <= now);
+    if (galFilter !== "all" && !groups.some((g) => g.ev.id === galFilter)) galFilter = "all";
+    const label = (e) => `${e.emoji || ""} ${c.loc(e, "title")} · ${fmtDay(c, e.start)}`.trim();
+    const shown = galFilter === "all" ? groups : groups.filter((g) => g.ev.id === galFilter);
+    const total = groups.reduce((n, g) => n + g.photos.length, 0);
+    root.innerHTML = `
+      <form class="panel photo-add" id="galAddForm" novalidate>
+        <h2>📸 ${c.esc(c.t("galp.addT"))}</h2>
+        ${choices.length ? `
+        <div class="row">
+          <div class="field"><label for="ga_event">${c.esc(c.t("galp.event"))}</label>
+            <select id="ga_event">${choices.map((e) => `<option value="${c.esc(e.id)}" ${e === (choices.find((x) => new Date(x.start) <= now) || choices[0]) ? "selected" : ""}>${c.esc(label(e))}</option>`).join("")}</select></div>
+          <div class="field"><label for="ga_cap">${c.esc(c.t("galp.caption"))}</label><input type="text" id="ga_cap" maxlength="140"></div>
+        </div>
+        <div class="photo-add-actions">
+          <label class="btn btn-primary file-btn">＋ ${c.esc(c.t("galp.choose"))}<input type="file" accept="image/*" multiple hidden id="ga_files"></label>
+          <span class="card-meta" id="ga_status" aria-live="polite"></span>
+        </div>
+        <small class="card-meta">${c.esc(admin ? c.t("galp.adminHint") : c.t("gal.hint"))}</small>`
+        : `<p class="card-meta">${c.esc(c.t("galp.noEvent"))}</p>`}
+      </form>
+      ${groups.length > 1 ? `<div class="filters" role="tablist" aria-label="${c.esc(c.t("galp.event"))}">
+        <button class="chip ${galFilter === "all" ? "is-active" : ""}" data-gf="all" role="tab" aria-selected="${galFilter === "all"}">${c.esc(c.t("galp.all"))} (${total})</button>
+        ${groups.map((g) => `<button class="chip ${galFilter === g.ev.id ? "is-active" : ""}" data-gf="${c.esc(g.ev.id)}" role="tab" aria-selected="${galFilter === g.ev.id}">${c.esc(`${g.ev.emoji || ""} ${c.loc(g.ev, "title")}`.trim())} (${g.photos.length})</button>`).join("")}
+      </div>` : ""}
+      ${shown.length ? shown.map((g) => `
+        <section class="gal-group">
+          <div class="list-head"><h2>${c.esc(label(g.ev))}</h2><a class="link" href="#/event/${encodeURIComponent(g.ev.id)}">${c.esc(c.t("galp.see"))} →</a></div>
+          <div class="gallery-grid">${g.photos.map((p) => `
+            <button type="button" class="gallery-item" data-zoom="${c.esc(Store.uploadUrl(p.path))}" data-cap="${c.esc(p.caption ? `${p.caption} — ${label(g.ev)}` : label(g.ev))}">
+              <img src="${c.esc(Store.uploadUrl(p.path))}" alt="${c.esc(p.caption || label(g.ev))}" loading="lazy"></button>`).join("")}</div>
+        </section>`).join("") : `<div class="empty">${c.esc(c.t("galp.none"))}</div>`}`;
+    zoomHandler(c, root);
+    root.querySelectorAll("[data-gf]").forEach((b) => { b.onclick = () => { galFilter = b.dataset.gf; renderGalleryPage(c); }; });
+    const inp = c.$("#ga_files");
+    if (!inp) return;
+    inp.onchange = async (e) => {
+      const files = [...e.target.files].slice(0, admin ? 20 : 10);
+      e.target.value = "";
+      if (!files.length) return;
+      const eventId = c.$("#ga_event").value, cap = c.$("#ga_cap").value, out = c.$("#ga_status");
+      inp.disabled = true;
+      let ok = 0;
+      for (const [i, f] of files.entries()) {
+        out.textContent = `${c.t("galp.sending")} ${i + 1}/${files.length}`;
+        try {
+          if (admin) await Store.adminAddPhoto(eventId, f, cap);
+          else await Store.submitPhoto(eventId, f, cap);
+          ok++;
+        } catch (err) {
+          if (!err.code) console.error(err);
+          c.toast(c.errMsg(err));
+          if (["RATE_LIMIT", "AUTH", "STORAGE", "DB_OUTDATED", "NOT_STARTED"].includes(err.code)) break;
+        }
+      }
+      inp.disabled = false;
+      out.textContent = "";
+      if (!ok) return;
+      if (admin) { galFilter = eventId; c.toast(c.tp("galp.published", ok)); renderGalleryPage(c); }
+      else { c.toast(c.tp("gal.sent", ok)); c.$("#ga_cap").value = ""; }
+    };
+  }
+
   /* ================= 3. PETITES ANNONCES ================= */
   const AD_KINDS = ["lend", "give", "seek", "help"];
   const AD_EMOJI = { lend: "🔁", give: "🎁", seek: "🔍", help: "🤝" };
@@ -387,6 +460,7 @@ window.LEONE_COMM = (function () {
           <label class="btn btn-primary file-btn">＋ ${c.esc(c.t("amod.choose"))}<input type="file" accept="image/*" multiple hidden id="pa_files"></label>
           <span class="card-meta" id="pa_count" aria-live="polite"></span>
           <a class="btn btn-sm" id="pa_see" href="#/event/${c.esc(pick ? pick.id : "")}">${c.esc(c.t("amod.seeEvent"))} →</a>
+          <a class="btn btn-sm" href="#/gallery">📸 ${c.esc(c.t("nav.gallery"))} →</a>
         </div>` : `<p class="card-meta">${c.esc(c.t("adm.none"))}</p>`}
       </form>
       <h2>${c.esc(c.t("amod.pending"))} (${pending.length})</h2>
@@ -708,7 +782,7 @@ window.LEONE_COMM = (function () {
   }
 
   return {
-    calendarHTML, bindCalendar, renderGallery, renderAds, renderReports, renderPolls, initPwa, renderApp,
+    calendarHTML, bindCalendar, renderGallery, renderGalleryPage, renderAds, renderReports, renderPolls, initPwa, renderApp,
     renderAdminPhotos, renderAdminAds, renderAdminReports, renderAdminPolls, renderDashboard
   };
 })();
