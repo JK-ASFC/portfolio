@@ -167,6 +167,7 @@ window.LEONE_COMM = (function () {
       e.target.value = "";
       if (!files.length) return;
       const eventId = c.$("#ga_event").value, cap = c.$("#ga_cap").value, out = c.$("#ga_status");
+      if (!c.sensitiveOk(cap)) return;
       inp.disabled = true;
       let ok = 0;
       for (const [i, f] of files.entries()) {
@@ -242,6 +243,7 @@ window.LEONE_COMM = (function () {
       if (form.website.value) return setOpen(false);
       if (Date.now() - shownAt < 2500) { c.toast(c.t("form.tooFast")); return; }
       if (form.title.value.trim().length < 3) { c.toast(c.t("ads.needTitle")); form.title.focus(); return; }
+      if (!c.sensitiveOk(form.title.value, form.body.value, form.contact.value, form.name.value)) return;
       const btn = c.$("button[type=submit]", form);
       btn.disabled = true;
       try {
@@ -266,56 +268,18 @@ window.LEONE_COMM = (function () {
   const REP_CATS = ["electricity", "water", "heating", "elevator", "cleanliness", "security", "other"];
   const REP_EMOJI = { electricity: "💡", water: "💧", heating: "🌡️", elevator: "🛗", cleanliness: "🧹", security: "🔒", other: "❓" };
   const REP_STATUS_EMOJI = { new: "🟠", forwarded: "🔵", fixed: "🟢" };
+  /* Problème dans le logement : renvoi vers le support Colonies (ce site ne transmet rien). */
   async function renderReports(c) {
     const root = c.$("#reportRoot");
-    const list = await Store.listReports();
+    const S = window.LEONE_LEGAL ? LEONE_LEGAL.SUPPORT : { mail: "support@livecolonies.com", help: "https://support.livecolonies.com/fr/" };
     root.innerHTML = `
       <p class="notice rep-urgent">🚨 ${c.esc(c.t("rep.urgent"))}</p>
-      <div class="event-layout">
-        <form class="form panel" id="repForm" novalidate autocomplete="off">
-          <h2>${c.esc(c.t("rep.formT"))}</h2>
-          <div class="row">
-            <div class="field"><label for="rep_cat">${c.esc(c.t("rep.cat"))}</label>
-              <select id="rep_cat" name="category">${REP_CATS.map((k) => `<option value="${k}">${REP_EMOJI[k]} ${c.esc(c.t(`rep.c.${k}`))}</option>`).join("")}</select></div>
-            <div class="field"><label for="rep_loc">${c.esc(c.t("rep.loc"))}</label><input type="text" id="rep_loc" name="location" maxlength="80" placeholder="${c.esc(c.t("rep.locPh"))}"></div>
-          </div>
-          <div class="field"><label for="rep_body">${c.esc(c.t("rep.body"))}</label><textarea id="rep_body" name="body" maxlength="800" required placeholder="${c.esc(c.t("rep.bodyPh"))}"></textarea></div>
-          <div class="field receipt-field"><label for="rep_photo">📷 ${c.esc(c.t("rep.photo"))}</label><input type="file" id="rep_photo" name="photo" accept="image/*"></div>
-          <div class="field"><label for="rep_name">${c.esc(c.t("rep.name"))}</label><input type="text" id="rep_name" name="name" maxlength="40" autocomplete="given-name"><small>🔒 ${c.esc(c.t("rep.nameHint"))}</small></div>
-          ${HONEYPOT}
-          <div class="btn-row"><button class="btn btn-primary" type="submit">${c.esc(c.t("rep.send"))}</button></div>
-        </form>
-        <div class="panel">
-          <h2>${c.esc(c.t("rep.list"))}</h2>
-          ${list.length ? `<ul class="rep-list">${list.map((r) => `
-            <li class="rep-item status-${c.esc(r.status)}">
-              <div class="rep-head">
-                <strong>${REP_EMOJI[r.category] || "❓"} ${c.esc(c.t(`rep.c.${r.category}`))}${r.location ? ` · ${c.esc(r.location)}` : ""}</strong>
-                <span class="tag tag-rep-${c.esc(r.status)}">${REP_STATUS_EMOJI[r.status]} ${c.esc(c.t(`rep.s.${r.status}`))}</span>
-              </div>
-              <p class="notice-body">${c.esc(r.body)}</p>
-              ${r.photoPath && Store.uploadUrl(r.photoPath) ? `<button type="button" class="rep-photo" data-zoom="${c.esc(Store.uploadUrl(r.photoPath))}"><img src="${c.esc(Store.uploadUrl(r.photoPath))}" alt="" loading="lazy"></button>` : ""}
-              ${r.adminNote ? `<p class="rep-note">💬 ${c.esc(c.t("rep.note", { x: r.adminNote }))}</p>` : ""}
-              <span class="card-meta">${c.esc(fmtDay(c, r.createdAt))}</span>
-            </li>`).join("")}</ul>` : `<p class="card-meta">${c.esc(c.t("rep.none"))}</p>`}
-        </div>
+      <p class="notice legal-aff">ℹ️ ${c.esc(c.t("sup.notUs"))}</p>
+      <div class="support-grid">
+        <div class="panel support-card"><span class="support-ico" aria-hidden="true">💬</span><h2>${c.esc(c.t("sup.space"))}</h2><p>${c.esc(c.t("sup.spaceHint"))}</p></div>
+        <a class="panel support-card" href="mailto:${c.esc(S.mail)}"><span class="support-ico" aria-hidden="true">✉️</span><h2>${c.esc(c.t("sup.mail"))}</h2><p>${c.esc(S.mail)}</p></a>
+        <a class="panel support-card" href="${c.esc(S.help)}" target="_blank" rel="noopener noreferrer"><span class="support-ico" aria-hidden="true">❓</span><h2>${c.esc(c.t("sup.help"))}</h2><p>support.livecolonies.com</p></a>
       </div>`;
-    const form = c.$("#repForm");
-    const shownAt = Date.now();
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      if (form.website.value) return;
-      if (Date.now() - shownAt < 2500) { c.toast(c.t("form.tooFast")); return; }
-      if (form.body.value.trim().length < 5) { c.toast(c.t("rep.needBody")); form.body.focus(); return; }
-      const btn = c.$("button[type=submit]", form);
-      btn.disabled = true;
-      try {
-        await Store.submitReport({ category: form.category.value, location: form.location.value, body: form.body.value, name: form.name.value }, form.photo.files[0] || null);
-        c.toast(c.t("rep.sent"));
-        renderReports(c);
-      } catch (err) { if (!err.code) console.error(err); btn.disabled = false; c.toast(c.errMsg(err)); }
-    };
-    if (!root.dataset.zoomBound) { zoomHandler(c, root); root.dataset.zoomBound = "1"; }
   }
 
   /* ================= 5. SONDAGES ================= */
@@ -622,10 +586,15 @@ window.LEONE_COMM = (function () {
   async function renderDashboard(c, tabs) {
     const root = c.$("#adminRoot");
     root.innerHTML = `${tabs}<p class="card-meta">…</p>`;
+    // RGPD : effacement automatique des données arrivées au bout de leur durée de conservation (1 fois par jour)
+    try {
+      const last = Number(localStorage.getItem("leone.purgedAt") || 0);
+      if (Date.now() - last > 864e5) { await Store.adminPurge(); localStorage.setItem("leone.purgedAt", String(Date.now())); }
+    } catch (e) { console.warn("purge", e); }
     const [events, stats, props, pot, inv, polls, photos, reports, ads, pushKey, subs] = await Promise.all([
       safe(Store.listEvents(), []), safe(Store.stats(), {}), safe(Store.listProposals(), []), safe(Store.getPot(), { entries: [], settings: {} }),
       safe(Store.getInventory(), { groups: [], items: [] }), safe(Store.adminListPolls(), []), safe(Store.adminListPhotos(), []),
-      safe(Store.adminListReports(), []), safe(Store.listClassifieds(), []), safe(Store.getPushKey(), ""), safe(Store.pushCount(), 0)
+      Promise.resolve([]), safe(Store.listClassifieds(), []), safe(Store.getPushKey(), ""), safe(Store.pushCount(), 0)
     ]);
     const now = new Date();
     const endOf = (e) => (e.end ? new Date(e.end) : new Date(new Date(e.start).getTime() + 3 * 3600e3));
@@ -639,7 +608,6 @@ window.LEONE_COMM = (function () {
     const noTicket = pot.entries.filter((e) => e.kind === "out" && !e.receiptUrl).length;
     const todo = [
       ["📸", c.t("dash.todoPhotos"), photos.filter((p) => p.status === "pending").length, "#/admin/photos"],
-      ["🛠️", c.t("dash.todoReports"), reports.filter((r) => r.status === "new").length, "#/admin/reports"],
       ["💡", c.t("dash.todoIdeas"), props.filter((p) => p.status === "new").length, "#/admin/proposals"],
       ["🧾", c.t("dash.todoTickets"), noTicket, "#/admin/pot"]
     ];

@@ -1,10 +1,10 @@
 /* LEONE — service worker : appli installable, hors connexion et notifications.
    Stratégie « réseau d'abord » : le site est toujours à jour, et la copie locale
    ne sert que si le réseau est indisponible. Les données (Supabase) ne sont jamais mises en cache. */
-const CACHE = "leone-v1";
+const CACHE = "leone-v2";
 const SHELL = [
-  "./", "index.html", "manifest.webmanifest", "css/style.css",
-  "js/config.js", "js/i18n.js", "js/guide-seed.js", "js/store.js", "js/residence.js", "js/community.js", "js/app.js",
+  "./", "index.html", "manifest.webmanifest", "css/fonts.css", "css/style.css",
+  "js/config.js", "js/i18n.js", "js/guide-seed.js", "js/store.js", "js/residence.js", "js/community.js", "js/legal.js", "js/app.js",
   "icons/icon-192.png", "icons/badge-96.png"
 ];
 

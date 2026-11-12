@@ -43,6 +43,7 @@ Sans Supabase, le site tourne en **mode démo** : chaque navigateur a ses propre
 - `whatsappUrl` : le lien d'invitation du groupe WhatsApp. Il ajoute un bouton sur l'accueil et un lien en bas de page.
 - `instagramGroupUrl` : le lien d'invitation du groupe Instagram. Pour l'obtenir dans Instagram : discussion de groupe → nom du groupe → **Inviter via un lien** → copier. On peut aussi mettre le lien d'un canal ou d'un compte. Le bouton reste masqué tant que ce champ est vide.
 - `creatorInstagram` : le pseudo affiché en bas de page dans « Site créé par @… ».
+- `publisherName`, `contactEmail` : l'éditeur et l'adresse de contact affichés sur la page « Confidentialité & mentions légales ».
 
 ## Base partagée et sécurisée (Supabase, gratuit)
 
@@ -149,12 +150,14 @@ Onglet **Annonces** : Je prête, Je donne, Je cherche, Un coup de main.
 - Elle expire au bout de 30 jours.
 - L'auteur peut la retirer depuis son appareil. L'organisateur peut retirer n'importe quelle annonce (**Organiser → Annonces**).
 
-## Signalement d'un problème
+## Un problème dans le logement → support Colonies
 
-Onglet **Plus → Signaler un problème** : catégorie, lieu, description et photo.
-- Un rappel « urgence = 112 » est affiché.
-- La liste publique montre les problèmes en cours avec leur statut (Signalé → Transmis → Réparé) et la réponse de l'organisateur. Le prénom du déclarant n'est visible que des organisateurs.
-- Le suivi se fait dans **Organiser → Signalements**.
+Le site **n'est pas affilié à Colonies** et ne transmet rien. L'onglet **Plus → Signaler un problème** renvoie donc vers le support officiel :
+- la messagerie de l'espace locataire ;
+- support@livecolonies.com ;
+- https://support.livecolonies.com/fr/
+
+Le rappel « urgence = 112 » reste affiché. L'ancien formulaire est désactivé côté base. Les anciens signalements enregistrés sont effacés à la première purge (voir RGPD).
 
 ## Sondages rapides
 
@@ -184,18 +187,38 @@ Ensuite, le **Tableau de bord** permet d'envoyer une notification (titre, texte,
 
 **Organiser** ouvre un tableau de bord qui regroupe :
 - les chiffres clés : événements à venir, réponses, solde du pot, abonnés aux notifications ;
-- une liste « À traiter » : photos à valider, signalements ouverts, nouvelles idées ;
+- une liste « À traiter » : photos à valider, nouvelles idées, dépenses sans ticket ;
 - les prochains événements, avec la part des besoins couverts ;
 - la participation par événement (graphique et tableau) ;
 - les idées les plus aimées, le pot, les articles en rupture, les sondages ouverts ;
 - l'envoi de notifications.
 
-## Confidentialité
+## Confidentialité, RGPD et mentions légales
 
-- Pas de compte pour répondre, **pas de numéro d'appartement**.
-- Le prénom n'apparaît dans « Qui vient » **que si la personne coche la case** (sinon « Un·e voisin·e »).
-- Le message et les réponses aux questions ne sont visibles **que par les organisateurs**.
-- Les réponses brutes ne sont pas lisibles publiquement : le public ne reçoit qu'un résumé.
+- La page **#/legal** (« Confidentialité & mentions légales », lien en bas de chaque page) contient :
+  - les mentions légales (LCEN) ;
+  - le responsable du traitement ;
+  - pour chaque donnée : la finalité, la base légale et la durée de conservation ;
+  - le stockage sur l'appareil, les destinataires et les transferts hors UE ;
+  - les droits RGPD, la CNIL et les règles de publication.
+- Elle existe en français (texte de référence) et en anglais (toutes les autres langues).
+- Dans `js/config.js`, renseigner :
+  - `publisherName` (nom de l'éditeur) ;
+  - `contactEmail` (adresse pour exercer ses droits).
+
+  Sans eux, la page affiche « Un résident » et le contact Instagram.
+- **Mention « non affilié à Colonies »** en bas de chaque page, sur la page légale et sur la page support.
+- **Aucun prénom n'est affiché publiquement**. Le public voit « Un·e voisin·e » ; seuls les organisateurs voient les prénoms (la base l'impose aussi).
+- **Pas de numéro de chambre, pas de compte, aucun cookie, aucun appel à Google** : les polices sont hébergées dans `fonts/`.
+- **Alerte avant publication** : un texte qui ressemble à un numéro de chambre, un code, un mot de passe Wi-Fi, un téléphone ou un e-mail déclenche une confirmation. Cela vaut pour les réponses, les idées, les annonces et les légendes de photos. L'espace Organiser affiche le même rappel.
+- **Droit à l'effacement en libre-service** : bouton « Supprimer ma réponse » sur la page de l'événement.
+- **Durées de conservation** : la fonction `admin_purge`, lancée une fois par jour à l'ouverture du tableau de bord organisateur, efface :
+  - les réponses, 6 mois après l'événement ;
+  - les idées, après 12 mois ;
+  - les votes de sondage, 12 mois après la fin du sondage ;
+  - les annonces, 30 jours après leur expiration ;
+  - les anciens signalements.
+- Le message et les réponses aux questions ne sont visibles **que par les organisateurs**. Le public ne reçoit qu'un résumé.
 
 ## Anti-doublons et anti-triche
 

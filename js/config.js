@@ -30,6 +30,13 @@ window.LEONE_CONFIG = {
   // « Inviter via un lien »), ou lien d'un canal / d'un compte. Vide = bouton masqué.
   instagramGroupUrl: "https://ig.me/j/NgyyaTOo806T8lDp/",
 
+  // Page « Confidentialité & mentions légales » (#/legal).
+  // publisherName : ton nom (ex. « Kévin D. ») — recommandé pour être pleinement conforme
+  //   (RGPD art. 13 : identité du responsable du traitement). Vide = « Un résident ».
+  // contactEmail : adresse pour exercer ses droits RGPD (vide = contact par Instagram).
+  publisherName: "",
+  contactEmail: "",
+
   // Créateur du site, affiché en bas de page (pseudo Instagram, sans @)
   creatorInstagram: "kev_kev_jk_"
 };
