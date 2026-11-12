@@ -93,7 +93,8 @@
   const answered = {
     get() { try { return JSON.parse(localStorage.getItem(ANS_KEY) || "[]"); } catch (e) { return []; } },
     has(id) { return this.get().includes(id); },
-    add(id) { try { const a = this.get(); if (!a.includes(id)) localStorage.setItem(ANS_KEY, JSON.stringify([...a, id])); } catch (e) { /* ignore */ } }
+    add(id) { try { const a = this.get(); if (!a.includes(id)) localStorage.setItem(ANS_KEY, JSON.stringify([...a, id])); } catch (e) { /* ignore */ } },
+    delete(id) { try { localStorage.setItem(ANS_KEY, JSON.stringify(this.get().filter((x) => x !== id))); } catch (e) { /* ignore */ } }
   };
 
   /* ---------------- Dates ---------------- */
@@ -282,9 +283,19 @@
           <p class="mine-status"><strong>${esc(mine.name)}</strong> <span class="status ${esc(mine.status)}">${esc(t(`status.${mine.status}`))}</span>${mine.guests > 0 ? ` · ${esc(tp("guests", mine.guests))}` : ""}</p>
           ${mine.status !== "no" ? `<p>${esc(brings.length ? t("mine.brings", { x: brings.join(", ") }) : t("mine.nothing"))}</p>` : ""}
           <p class="card-meta">${esc(t("mine.text"))}</p>
-          <button class="btn" id="editMine">${esc(t("mine.edit"))}</button>
+          <div class="btn-row"><button class="btn" id="editMine">${esc(t("mine.edit"))}</button>
+          <button class="btn btn-danger" id="delMine">${esc(t("mine.delete"))}</button></div>
         </div>`;
       $("#editMine").onclick = () => renderEvent(id, true);
+      $("#delMine").onclick = async () => {
+        if (!confirm(t("mine.deleteConfirm"))) return;
+        try {
+          await Store.deleteMyResponse(ev.id);
+          answered.delete(ev.id);
+          toast(t("mine.deleted"));
+          renderEvent(id);
+        } catch (err) { toast(errMsg(err)); }
+      };
     } else {
       renderForm(panel, ev, st, editing ? mine : null);
     }
@@ -329,12 +340,8 @@
         <div class="field">
           <label for="f_name">${esc(t("form.name"))}</label>
           <input type="text" id="f_name" name="fname" required maxlength="40" autocomplete="given-name" placeholder="${esc(t("form.namePh"))}" value="${esc(mine ? mine.name : "")}">
-          <small>${esc(t("form.nameHint"))}</small>
+          <small>🔒 ${esc(t("form.nameHint2"))} ${esc(t("form.nameHint"))}</small>
         </div>
-        <label class="check">
-          <input type="checkbox" name="showName" ${mine && mine.showName ? "checked" : ""}>
-          <span>${esc(t("form.showName"))}<small>${esc(t("form.showNameHint"))}</small></span>
-        </label>
         <div class="field">
           <span class="label" id="lblComing">${esc(t("form.coming"))}</span>
           <div class="seg" role="radiogroup" aria-labelledby="lblComing">
@@ -387,12 +394,13 @@
       (ev.questions || []).forEach((qq) => { const el = form[`q_${qq.id}`]; if (el && el.value.trim()) answers[qq.id] = el.value.trim(); });
       const st2 = form.status.value;
       const payload = {
-        eventId: ev.id, name, showName: form.showName.checked, status: st2,
+        eventId: ev.id, name, showName: false, status: st2,
         guests: form.guests ? Math.max(0, Math.min(10, parseInt(form.guests.value, 10) || 0)) : 0,
         items: st2 === "no" ? {} : Object.fromEntries(Object.entries(picks).filter(([, q]) => q > 0)),
         other: st2 === "no" ? "" : form.other.value.trim(),
         answers, message: form.message.value.trim(), lang
       };
+      if (!sensitiveOk(name, payload.other, payload.message, ...Object.values(answers))) return;
       const btn = $("button[type=submit]", form);
       btn.disabled = true;
       try {
@@ -454,7 +462,6 @@
     if (sub === "guide") return LEONE_EXT.renderAdminGuide(ctx, await adminTabs("guide"), id);
     if (sub === "photos") return LEONE_COMM.renderAdminPhotos(ctx, await adminTabs("photos"));
     if (sub === "ads") return LEONE_COMM.renderAdminAds(ctx, await adminTabs("ads"));
-    if (sub === "reports") return LEONE_COMM.renderAdminReports(ctx, await adminTabs("reports"));
     if (sub === "polls") return LEONE_COMM.renderAdminPolls(ctx, await adminTabs("polls"));
     if (!sub) return LEONE_COMM.renderDashboard(ctx, await adminTabs("dashboard"));
 
@@ -688,11 +695,11 @@
     const itemName = (iid) => { const it = items.find((x) => x.id === iid); return it ? loc(it, "label") : iid; };
     const qs = ev.questions || [];
     const cells = (r) => [
-      new Date(r.createdAt).toLocaleString(locale()), r.name, t(r.showName ? "rs.public" : "rs.hidden"), t(`status.${r.status}`), r.guests || 0,
+      new Date(r.createdAt).toLocaleString(locale()), r.name, t(`status.${r.status}`), r.guests || 0,
       Object.entries(r.items || {}).map(([k, q]) => `${q}× ${itemName(k)}`).join(", "), r.other || "",
       ...qs.map((q) => (r.answers || {})[q.id] || ""), r.message || ""
     ];
-    const head = [t("col.date"), t("col.name"), t("col.visibility"), t("col.status"), t("col.guests"), t("col.brings"), t("col.other"), ...qs.map((q) => loc(q, "label")), t("col.msg")];
+    const head = [t("col.date"), t("col.name"), t("col.status"), t("col.guests"), t("col.brings"), t("col.other"), ...qs.map((q) => loc(q, "label")), t("col.msg")];
     const similar = similarNames(rs);
 
     $("#adminRoot").innerHTML = `
@@ -716,7 +723,6 @@
           <thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join("")}<th></th></tr></thead>
           <tbody>${rs.length ? rs.map((r) => `<tr>${cells(r).map((c) => `<td>${esc(c)}</td>`).join("")}
             <td class="row-actions">
-              <button class="btn btn-sm" data-vis="${esc(r.id)}" data-show="${r.showName ? "0" : "1"}">${esc(t(r.showName ? "rs.hide" : "rs.show"))}</button>
               <button class="btn btn-sm btn-danger" data-delr="${esc(r.id)}" data-name="${esc(r.name)}">${esc(t("rs.del"))}</button>
             </td></tr>`).join("") : `<tr><td colspan="${head.length + 1}">${esc(t("rs.none"))}</td></tr>`}</tbody>
         </table>
@@ -966,6 +972,7 @@
       if (Date.now() - shownAt < 3000) { toast(t("form.tooFast")); return; }
       const title = form.ptitle.value.replace(/\s+/g, " ").trim();
       if (title.length < 3) { form.ptitle.focus(); toast(t("prop.needTitle")); return; }
+      if (!sensitiveOk(title, form.pdesc.value, form.pwhen.value, form.pneeds.value, form.pname.value)) return;
       const btn = $("button[type=submit]", form);
       btn.disabled = true;
       try {
@@ -986,10 +993,9 @@
   let pendingDraft = null;
   async function adminTabs(active) {
     const count = (p, f) => p.then((l) => l.filter(f).length, () => 0);
-    const [n, nPhotos, nReports] = await Promise.all([
+    const [n, nPhotos] = await Promise.all([
       count(Store.listProposals(), (p) => p.status === "new"),
-      count(Store.adminListPhotos(), (p) => p.status === "pending"),
-      count(Store.adminListReports(), (r) => r.status === "new")
+      count(Store.adminListPhotos(), (p) => p.status === "pending")
     ]);
     const badge = (x) => (x ? ` (${x})` : "");
     const tab = (key, href, label) =>
@@ -998,7 +1004,6 @@
       ${tab("dashboard", "#/admin", t("adm.tabDashboard"))}
       ${tab("events", "#/admin/events", t("adm.tabEvents"))}
       ${tab("proposals", "#/admin/proposals", t("adm.tabProposals") + badge(n))}
-      ${tab("reports", "#/admin/reports", t("adm.tabReports") + badge(nReports))}
       ${tab("photos", "#/admin/photos", t("adm.tabPhotos") + badge(nPhotos))}
       ${tab("polls", "#/admin/polls", t("adm.tabPolls"))}
       ${tab("ads", "#/admin/ads", t("adm.tabAds"))}
@@ -1006,7 +1011,8 @@
       ${tab("infos", "#/admin/infos", t("adm.tabInfos"))}
       ${tab("guide", "#/admin/guide", t("adm.tabGuide"))}
       ${tab("inventory", "#/inventory", t("adm.tabInventory"))}
-    </nav>`;
+    </nav>
+    <p class="notice admin-public">🔓 ${esc(t("adm.publicWarn"))}</p>`;
   }
 
   async function renderAdminProposals() {
@@ -1167,7 +1173,19 @@
   }
 
   /* ---------------- Outils partagés avec js/residence.js ---------------- */
-  const ctx = { t, tp, esc, loc, toast, locale, $, $$, errMsg, observeReveals, lang: () => lang };
+  /* Site public : alerte avant de publier un numéro de chambre, un code, un mot de passe Wi-Fi, un téléphone… */
+  const SENSITIVE = [
+    /\b(chambres?|appart\w*|apt|logement|porte|room|flat|digicode|codes?|wi-?fi|mot de passe|mdp|password|passcode|pin)\b[^\n\d]{0,15}\d/i,
+    /\b(?!(?:19|20)\d{2}\b)\d{4,}\b/,
+    /(?:\+\d{2}[\s.-]?|\b0)[1-9](?:[\s.-]?\d{2}){4}\b/,
+    /[^\s@]+@[^\s@]+\.[a-z]{2,}/i
+  ];
+  function sensitiveOk(...texts) {
+    const all = texts.filter(Boolean).join("\n");
+    if (!SENSITIVE.some((re) => re.test(all))) return true;
+    return confirm(t("warn.sensitive"));
+  }
+  const ctx = { t, tp, esc, loc, toast, locale, $, $$, errMsg, observeReveals, lang: () => lang, sensitiveOk };
 
   /* ---------------- Menu « Plus » ---------------- */
   const moreBtn = $("#moreBtn"), moreMenu = $("#moreMenu");
@@ -1185,7 +1203,7 @@
     try { parts = h.replace(/^#\/?/, "").split("/").map(decodeURIComponent); } catch (e) { parts = []; }
     const [name = "", sub, id] = parts;
     const openIdea = name === "propose"; // ancien lien « Proposer » : accueil + formulaire ouvert
-    const v = ["event", "admin", "pot", "infos", "inventory", "guide", "ads", "gallery", "report", "polls", "app"].includes(name) ? name : "home";
+    const v = ["event", "admin", "pot", "infos", "inventory", "guide", "ads", "gallery", "report", "polls", "app", "legal"].includes(name) ? name : "home";
     setMore(false);
 
     $$(".view").forEach((s) => (s.hidden = s.dataset.view !== v));
@@ -1211,6 +1229,7 @@
       if (v === "report") await LEONE_COMM.renderReports(ctx);
       if (v === "polls") await LEONE_COMM.renderPolls(ctx);
       if (v === "app") await LEONE_COMM.renderApp(ctx);
+      if (v === "legal") LEONE_LEGAL.render(ctx);
     } catch (err) {
       if (!err.code) console.error(err);
       // message affiché dans la page elle-même (plutôt qu'une page vide)

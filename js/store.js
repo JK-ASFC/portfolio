@@ -298,6 +298,19 @@
     },
 
     /** La réponse déjà envoyée depuis cet appareil (ou null). */
+    /** RGPD : le résident efface lui-même sa réponse (depuis l'appareil qui l'a envoyée). */
+    async deleteMyResponse(eventId) {
+      if (!REMOTE) { local.write(LS_RESP, local.responses().filter((r) => !(r.eventId === eventId && r.device === device()))); return; }
+      await rpc("delete_my_response", { p_event_id: eventId, p_device: device() });
+    },
+    /** RGPD : effacement des données arrivées au bout de leur durée de conservation (organisateur). */
+    async adminPurge() {
+      if (!REMOTE) return null;
+      let res;
+      try { res = await rpc("admin_purge", {}, true); } catch (e) { if (e.code === "DB_OUTDATED") return null; throw e; }
+      for (const p of (res && res.paths) || []) await this.removeUpload(p);
+      return res;
+    },
     async myResponse(eventId) {
       if (!REMOTE) return publicMine(local.responses().find((r) => r.eventId === eventId && r.device === device())) || null;
       return (await rpc("my_response", { p_event_id: eventId, p_device: device() })) || null;

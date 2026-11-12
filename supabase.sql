@@ -140,7 +140,7 @@ language sql stable security definer set search_path = public as $$
     ), '{}'::jsonb),
     coalesce((
       select jsonb_agg(jsonb_build_object(
-               'name',   case when r.show_name then r.name end,
+               'name',   null::text,  -- site public : les prénoms ne sont jamais affichés (seuls les organisateurs les voient)
                'status', r.status,
                'guests', r.guests,
                'items',  case when r.status <> 'no' then r.items else '{}'::jsonb end,
@@ -153,6 +153,9 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 -- ---------- Ma réponse (retrouvée grâce au secret de l'appareil) ----------
+-- Site public : plus aucun prénom affiché publiquement (recommandation de confidentialité)
+update public.responses set show_name = false where show_name;
+
 create or replace function public.my_response(p_event_id text, p_device text)
 returns jsonb
 language sql stable security definer set search_path = public as $$
@@ -263,7 +266,7 @@ begin
   end if;
 
   if p_update then
-    update responses set name = p_name, name_key = nkey, show_name = coalesce(p_show_name, false),
+    update responses set name = p_name, name_key = nkey, show_name = false,
       status = p_status, guests = g, items = clean_items, other = p_other, answers = clean_answers,
       message = p_message, lang = p_lang, updated_at = now()
     where id = existing.id
@@ -271,7 +274,7 @@ begin
   else
     insert into responses (event_id, name, name_key, show_name, status, guests, items, other,
                            answers, message, lang, device_hash, ip_hash)
-    values (p_event_id, p_name, nkey, coalesce(p_show_name, false), p_status, g, clean_items, p_other,
+    values (p_event_id, p_name, nkey, false, p_status, g, clean_items, p_other,
             clean_answers, p_message, p_lang, dev_hash, ip)
     returning id into rid;
   end if;
@@ -1007,6 +1010,51 @@ $$;
 -- clé publique des notifications (générée dans Organiser → Tableau de bord)
 insert into public.settings (key, data) values ('push', '{"vapidPublic": ""}'::jsonb) on conflict (key) do nothing;
 
+-- =============================================================
+-- RGPD : effacement par le résident + durées de conservation
+-- =============================================================
+-- Le résident efface lui-même sa réponse, depuis l'appareil qui l'a envoyée.
+create or replace function public.delete_my_response(p_event_id text, p_device text)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  if p_device is null or p_device !~ '^[0-9a-f]{32,128}$' then raise exception 'INVALID'; end if;
+  delete from responses where event_id = p_event_id and device_hash = public.leone_hash(p_device);
+  return found;
+end;
+$$;
+
+-- Effacement des données arrivées au bout de leur durée de conservation
+-- (lancé automatiquement, une fois par jour, quand un organisateur ouvre le tableau de bord) :
+--   réponses aux événements : 6 mois après l'événement ; idées : 12 mois ;
+--   votes de sondage : 12 mois après la fin du sondage ; annonces : 30 jours après expiration ;
+--   signalements : formulaire supprimé (renvoi vers le support Colonies) → effacés.
+-- Renvoie aussi les photos à supprimer du stockage (le site les efface ensuite).
+create or replace function public.admin_purge()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare n_resp int; n_prop int; n_votes int; n_ads int; n_rep int; p jsonb; paths jsonb := '[]'::jsonb;
+begin
+  if not public.is_admin() then raise exception 'AUTH'; end if;
+  delete from responses r using events e
+   where r.event_id = e.id
+     and (coalesce(nullif(e.data->>'end', ''), e.data->>'start')::timestamp at time zone 'Europe/Paris') < now() - interval '6 months';
+  get diagnostics n_resp = row_count;
+  delete from proposals where created_at < now() - interval '12 months';
+  get diagnostics n_prop = row_count;
+  delete from poll_votes v using polls pl
+   where v.poll_id = pl.id and coalesce(pl.ends_at, pl.created_at) < now() - interval '12 months';
+  get diagnostics n_votes = row_count;
+  with d as (delete from classifieds where expires_at < now() - interval '30 days' returning photo_path)
+  select count(*), coalesce(jsonb_agg(photo_path) filter (where photo_path is not null), '[]'::jsonb) into n_ads, p from d;
+  paths := paths || p;
+  with d as (delete from reports returning photo_path)
+  select count(*), coalesce(jsonb_agg(photo_path) filter (where photo_path is not null), '[]'::jsonb) into n_rep, p from d;
+  paths := paths || p;
+  return jsonb_build_object('responses', n_resp, 'proposals', n_prop, 'pollVotes', n_votes, 'ads', n_ads, 'reports', n_rep, 'paths', paths);
+end;
+$$;
+revoke all on function public.admin_purge() from public;
+grant execute on function public.admin_purge() to authenticated;
+
 -- ---------- Droits des fonctions publiques ----------
 do $$
 declare f text;
@@ -1014,14 +1062,18 @@ begin
   foreach f in array array[
     'public_photos(text)', 'submit_photo(text, text, text, text)',
     'public_classifieds(text)', 'post_classified(text, text, text, text, text, text, text)', 'remove_classified(uuid, text)',
-    'public_reports()', 'submit_report(text, text, text, text, text, text)',
     'public_polls(text)', 'vote_poll(uuid, text, text)',
-    'push_subscribe(text, text, text, text, text)', 'push_unsubscribe(text)'
+    'push_subscribe(text, text, text, text, text)', 'push_unsubscribe(text)',
+    'delete_my_response(text, text)'
   ] loop
     execute format('revoke all on function public.%s from public', f);
     execute format('grant execute on function public.%s to anon, authenticated', f);
   end loop;
 end $$;
+
+-- Signalements : formulaire retiré (les résidents sont renvoyés vers le support Colonies)
+revoke all on function public.submit_report(text, text, text, text, text, text) from public, anon, authenticated;
+revoke all on function public.public_reports() from public, anon, authenticated;
 
 -- -------------------------------------------------------------
 -- Exemple : match de l'Équipe de France, jeudi 12 novembre 2026

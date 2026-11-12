@@ -914,3 +914,26 @@ tr:last-child td { border-bottom: 0; }
 .gal-group { margin-top: 26px; }
 .gal-group .list-head h2 { margin: 0; font-size: 1.25rem; }
 #galleryRoot .filters { margin-top: 6px; }
+
+/* ---------------- Support Colonies, mentions, confidentialité ---------------- */
+.support-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 18px; }
+.support-card { display: block; color: var(--ink); text-decoration: none; }
+a.support-card:hover { transform: translate(-2px, -2px); }
+.support-card h2 { margin: 6px 0 4px; font-size: 1.15rem; }
+.support-card p { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+.support-ico { font-size: 1.8rem; }
+.legal-aff { margin-top: 12px; }
+.footer-aff { margin: 10px 0 0; font-weight: 700; font-size: .9rem; }
+.footer-privacy a { color: inherit; font-weight: 700; }
+.admin-public { margin: 0 0 18px; font-size: .9rem; }
+.legal h2 { margin-top: 34px; }
+.legal h3 { margin: 22px 0 6px; font-size: 1.05rem; }
+.legal p, .legal li, .legal dd { line-height: 1.6; }
+.legal a { color: var(--ink); font-weight: 700; }
+.legal-updated { color: var(--muted); font-size: .9rem; }
+.legal-dl dt { font-weight: 700; margin-top: 10px; }
+.legal-dl dd { margin: 2px 0 0; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.legal-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: .88rem; }
+.legal-table th, .legal-table td { border: 1px solid var(--ink); padding: 8px; text-align: left; vertical-align: top; }
+.legal-table th { background: var(--cream-2); }
