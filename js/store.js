@@ -843,6 +843,21 @@
       const path = await this.uploadPublic(file, "gallery");
       await rpc("submit_photo", { p_event_id: eventId, p_device: device(), p_path: path, p_caption: String(caption || "").slice(0, 140) });
     },
+    async adminAddPhoto(eventId, file, caption) {
+      const cap = String(caption || "").replace(/\s+/g, " ").trim().slice(0, 140);
+      if (!REMOTE) {
+        if (!local.events().some((e) => e.id === eventId)) throw fail("EVENT_NOT_FOUND");
+        const path = await this.uploadPublic(file, "gallery");
+        const all = local.read(LS_PHOTOS, []);
+        all.push({ id: uid(), eventId, path, caption: cap, status: "approved", device: "admin", createdAt: new Date().toISOString() });
+        local.write(LS_PHOTOS, all);
+        if (local.read(LS_PHOTOS, []).length !== all.length) throw fail("STORAGE");
+        return;
+      }
+      if (!(await token())) throw fail("AUTH");
+      const path = await this.uploadPublic(file, "gallery");
+      await sb("event_photos", { method: "POST", body: JSON.stringify({ event_id: eventId, path, caption: cap, status: "approved", device_hash: "admin" }) }, true);
+    },
     async adminListPhotos() {
       if (!REMOTE) return local.read(LS_PHOTOS, []);
       const rows = await sb("event_photos?select=id,event_id,path,caption,status,created_at&order=created_at.desc&limit=300", {}, true);

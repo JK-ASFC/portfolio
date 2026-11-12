@@ -87,19 +87,21 @@ window.LEONE_COMM = (function () {
   }
   async function renderGallery(c, ev, box) {
     if (!box) return;
-    if (new Date(ev.start) > new Date()) { box.innerHTML = ""; return; }
+    const started = new Date(ev.start) <= new Date();
     const photos = await safe(Store.listPhotos(ev.id), []);
+    if (!started && !photos.length) { box.innerHTML = ""; return; }
     box.innerHTML = `
       <div class="panel reveal">
         <div class="list-head"><h2>📸 ${c.esc(c.t("gal.title"))}</h2>
-          <label class="btn btn-sm btn-primary file-btn">${c.esc(c.t("gal.add"))}<input type="file" accept="image/*" multiple hidden id="galUpload"></label></div>
+          ${started ? `<label class="btn btn-sm btn-primary file-btn">${c.esc(c.t("gal.add"))}<input type="file" accept="image/*" multiple hidden id="galUpload"></label>` : ""}</div>
         ${photos.length ? `<div class="gallery-grid">${photos.map((p) => `
           <button type="button" class="gallery-item" data-zoom="${c.esc(Store.uploadUrl(p.path))}" data-cap="${c.esc(p.caption)}">
             <img src="${c.esc(Store.uploadUrl(p.path))}" alt="${c.esc(p.caption)}" loading="lazy"></button>`).join("")}</div>`
         : `<p class="card-meta">${c.esc(c.t("gal.none"))}</p>`}
-        <small class="card-meta">${c.esc(c.t("gal.hint"))}</small>
+        ${started ? `<small class="card-meta">${c.esc(c.t("gal.hint"))}</small>` : ""}
       </div>`;
     zoomHandler(c, box);
+    if (!started) return;
     c.$("#galUpload").onchange = async (e) => {
       const files = [...e.target.files].slice(0, 10);
       e.target.value = "";
@@ -368,12 +370,50 @@ window.LEONE_COMM = (function () {
           <button class="btn btn-sm btn-danger" data-no="${c.esc(p.id)}">${c.esc(c.t(p.status === "pending" ? "amod.reject" : "amod.remove"))}</button>
         </div>
       </div>`;
+    const evs = [...events].sort((a, b) => String(b.start).localeCompare(String(a.start)));
+    const now = new Date();
+    const pick = evs.find((e) => new Date(e.start) <= now) || evs[0];
     root.innerHTML = `${tabs}
+      <form class="panel photo-add" id="photoAddForm" novalidate>
+        <h2>📸 ${c.esc(c.t("amod.addT"))}</h2>
+        <p class="card-meta">${c.esc(c.t("amod.addHint"))}</p>
+        ${evs.length ? `
+        <div class="row">
+          <div class="field"><label for="pa_event">${c.esc(c.t("amod.event"))}</label>
+            <select id="pa_event">${evs.map((e) => `<option value="${c.esc(e.id)}" ${pick && e.id === pick.id ? "selected" : ""}>${c.esc(`${e.emoji || ""} ${c.loc(e, "title")} · ${fmtDay(c, e.start)}`)}</option>`).join("")}</select></div>
+          <div class="field"><label for="pa_cap">${c.esc(c.t("amod.caption"))}</label><input type="text" id="pa_cap" maxlength="140"></div>
+        </div>
+        <div class="photo-add-actions">
+          <label class="btn btn-primary file-btn">＋ ${c.esc(c.t("amod.choose"))}<input type="file" accept="image/*" multiple hidden id="pa_files"></label>
+          <span class="card-meta" id="pa_count" aria-live="polite"></span>
+          <a class="btn btn-sm" id="pa_see" href="#/event/${c.esc(pick ? pick.id : "")}">${c.esc(c.t("amod.seeEvent"))} →</a>
+        </div>` : `<p class="card-meta">${c.esc(c.t("adm.none"))}</p>`}
+      </form>
       <h2>${c.esc(c.t("amod.pending"))} (${pending.length})</h2>
       ${pending.length ? `<div class="mod-grid">${pending.map(card).join("")}</div>` : `<p class="card-meta">${c.esc(c.t("amod.nothing"))}</p>`}
       <h2 style="margin-top:28px">${c.esc(c.t("amod.approved"))} (${approved.length})</h2>
       ${approved.length ? `<div class="mod-grid">${approved.map(card).join("")}</div>` : `<p class="card-meta">${c.esc(c.t("amod.nothing"))}</p>`}`;
     zoomHandler(c, root);
+    const sel = c.$("#pa_event");
+    if (sel) sel.onchange = () => { c.$("#pa_see").href = "#/event/" + encodeURIComponent(sel.value); };
+    const inp = c.$("#pa_files");
+    if (inp) inp.onchange = async (e) => {
+      const files = [...e.target.files].slice(0, 20);
+      e.target.value = "";
+      if (!files.length) return;
+      const eventId = sel.value, cap = c.$("#pa_cap").value;
+      const out = c.$("#pa_count");
+      inp.disabled = true;
+      let ok = 0;
+      for (const [i, f] of files.entries()) {
+        out.textContent = `${c.t("apot.uploading")} ${i + 1}/${files.length}`;
+        try { await Store.adminAddPhoto(eventId, f, cap); ok++; }
+        catch (err) { if (!err.code) console.error(err); c.toast(c.errMsg(err)); if (["RATE_LIMIT", "AUTH", "STORAGE"].includes(err.code)) break; }
+      }
+      inp.disabled = false;
+      if (ok) { c.toast(c.tp("amod.added", ok)); renderAdminPhotos(c, tabs); }
+      else out.textContent = "";
+    };
     root.onclick = async (e) => {
       const ok = e.target.closest("[data-ok]"), no = e.target.closest("[data-no]");
       try {
