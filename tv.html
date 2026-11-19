@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex">
@@ -38,6 +38,8 @@
     </footer>
     <div class="tv-progress" aria-hidden="true"><i id="tvProgress"></i></div>
   </div>
+  <!-- voile sombre : luminosité réduite quand personne ne touche la télécommande -->
+  <div class="tv-dim" id="tvDim" aria-hidden="true"></div>
 
   <script src="js/config.js"></script>
   <script src="js/store.js"></script>

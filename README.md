@@ -201,6 +201,8 @@ pour une TV ou un écran d'accueil. Il tourne tout seul, sans menu ni clic :
 - prochains événements (3 max) : date, lieu, participants, compte à rebours, ce qu'il manque ;
 - infos en cours (les importantes passent en premier), sondages ouverts, idées les plus aimées,
   petites annonces ;
+- le **mode d'emploi** : une diapo par partie (`## intertitre`) de chaque article publié
+  (3 articles et 8 diapos au plus), avec ses étapes et la photo de la partie ;
 - une page **« Bienvenue » animée de 3 minutes** en fin de boucle : « bienvenue » dans les
   20 langues du site, soleil qui se lève, et les QR codes du groupe **WhatsApp** et du
   compte **Instagram** (`whatsappUrl` et `instagramGroupUrl` dans `js/config.js` ;
@@ -211,9 +213,16 @@ Textes en français avec l'anglais en dessous. Uniquement des données déjà pu
 **jamais de prénoms** (ni participants, ni auteurs d'annonces, ni contacts).
 
 - Scène 1920×1080 mise à l'échelle de n'importe quel écran ; animations légères.
-- Données rechargées toutes les 5 minutes, page rechargée toutes les 6 h ; hors connexion,
-  la dernière version reste affichée.
+- Données rechargées toutes les 5 minutes : un événement ou une info ajouté apparaît aussitôt,
+  sans interrompre la diapo affichée (pendant la page « Bienvenue », à la fin de celle-ci).
+  Page rechargée toutes les 6 h ; hors connexion, la dernière version reste affichée.
 - Télécommande : ◀ ▶ diapo précédente / suivante, **OK** = pause.
+- **Veille** : sans appui sur la télécommande pendant 10 minutes, l'écran s'assombrit (voile
+  noir à 65 %) ; la première touche rallume sans changer de diapo. Délai réglable dans
+  l'adresse : `tv.html?veille=5` (en minutes) ; `tv.html?veille=0` la désactive (utilisé par
+  l'écran d'accueil LEONE installé sur la TV, qui assombrit lui-même tout l'écran).
+- **Allumage** : à l'ouverture de la page, et quand la TV sort de veille avec la page déjà
+  ouverte, la page « Bienvenue » s'affiche en premier, en pleine luminosité.
 - QR codes générés sur place par `js/qr.js` (aucun service externe).
 
 ## Confidentialité, RGPD et mentions légales

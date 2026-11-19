@@ -14,6 +14,16 @@
   const REFRESH_MS = 5 * 60e3;   // données rechargées toutes les 5 min
   const RETRY_MS = 60e3;         // nouvel essai après une coupure réseau
   const RELOAD_MS = 6 * 3600e3;  // page rechargée toutes les 6 h (mises à jour du site)
+  // luminosité réduite si personne ne touche la télécommande pendant ce délai (minutes) ;
+  // réglable dans l'adresse : tv.html?veille=5 (de 0.1 à 240 min) ;
+  // tv.html?veille=0 : désactivée ici (l'écran d'accueil LEONE de la TV s'en charge)
+  const DIM_AFTER_MS = (() => {
+    const p = new URLSearchParams(location.search).get("veille");
+    if (p === "0") return Infinity;
+    const v = parseFloat(p);
+    return (v >= 0.1 && v <= 240 ? v : 10) * 60e3;
+  })();
+  const WAKE_GAP_MS = 20e3;      // horloge figée plus de 20 s = la TV était éteinte / en veille
   const THEMES = ["sunset", "tricolore", "ocean", "neon", "forest"];
   const AD_KINDS = {
     lend: ["🔁", "Je prête", "Lending"], give: ["🎁", "Je donne", "Giving away"],
@@ -77,13 +87,14 @@
 
   async function load() {
     const events = await Store.listEvents(); // échoue hors connexion : on garde les données précédentes
-    const [stats, infos, ideas, polls, ads] = await Promise.all([
+    const [stats, infos, ideas, polls, ads, guide] = await Promise.all([
       safe(Store.stats(), {}), safe(Store.listAnnouncements(), []),
-      safe(Store.listPublicProposals(), []), safe(Store.listPolls(), []), safe(Store.listClassifieds(), [])
+      safe(Store.listPublicProposals(), []), safe(Store.listPolls(), []), safe(Store.listClassifieds(), []),
+      safe(Store.listGuide(), [])
     ]);
     data = {
       events: events.slice().sort((a, b) => toDate(a.start) - toDate(b.start)),
-      stats: stats || {}, infos: infos || [], ideas: ideas || [], polls: polls || [], ads: ads || []
+      stats: stats || {}, infos: infos || [], ideas: ideas || [], polls: polls || [], ads: ads || [], guide: guide || []
     };
   }
 
@@ -283,20 +294,84 @@
     };
   }
 
+  /* ---- Mode d'emploi : une diapo par partie (« ## Intertitre ») de chaque article ---- */
+  // mise en forme du site : ## intertitre, - liste, 1. étape, **gras**, > encadré, [photo 2]
+  const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  function guideSections(a) {
+    const sections = [];
+    let cur = { heading: "", lines: [], photos: [] };
+    String(a.body || "").split(/\r?\n/).forEach((raw) => {
+      const line = raw.trim();
+      if (!line) return;
+      let m;
+      if ((m = line.match(/^##\s+(.+)/))) { if (cur.heading || cur.lines.length) sections.push(cur); cur = { heading: m[1], lines: [], photos: [] }; }
+      else if ((m = line.match(/^\[photo\s*(\d{1,2})\]$/i))) cur.photos.push(Number(m[1]) - 1);
+      else cur.lines.push(line);
+    });
+    if (cur.heading || cur.lines.length) sections.push(cur);
+    return sections.filter((s) => s.lines.length || s.photos.length);
+  }
+  function guideBodyHTML(lines) {
+    let html = "", list = null, used = 0;
+    const close = () => { if (list) { html += `</${list}>`; list = null; } };
+    for (const line of lines) {
+      if (used > 520) break; // reste lisible à 3 m : le détail est sur le site (QR code)
+      let m, tag = null, text = line;
+      if ((m = line.match(/^\d+[.)]\s+(.+)/))) { tag = "ol"; text = m[1]; }
+      else if ((m = line.match(/^[-•]\s+(.+)/))) { tag = "ul"; text = m[1]; }
+      if (tag) { if (list !== tag) { close(); html += `<${tag}>`; list = tag; } html += `<li>${inline(clip(text, 140))}</li>`; }
+      else if ((m = line.match(/^>\s*(.+)/))) { close(); html += `<p class="callout">${inline(clip(m[1], 200))}</p>`; }
+      else { close(); html += `<p>${inline(clip(text, 240))}</p>`; }
+      used += text.length;
+    }
+    close();
+    return html;
+  }
+  function guideSlides(articles) {
+    const out = [];
+    articles.slice(0, 3).forEach((a) => {
+      const parts = guideSections(a).slice(0, 6);
+      const titleEn = enOf(a.title, a.title_en);
+      parts.forEach((p, n) => {
+        const photo = (a.photos || [])[p.photos[0]];
+        const url = photo ? Store.guidePhotoUrl(photo.path) : "";
+        const len = p.lines.join(" ").length;
+        out.push({
+          key: `guide:${a.id}:${n}`, chip: ["📖", "Mode d'emploi", "How-to"], theme: "ocean",
+          dur: Math.max(12000, Math.min(22000, 9000 + len * 30)),
+          html: `<div class="s-grid">
+            <div class="s-main"><div class="tv-panel guide">
+              <div class="guide-text">
+                <p class="guide-eyebrow">${esc(a.emoji || "📘")} ${esc(clip(a.title, 60))}${parts.length > 1 ? ` · ${n + 1}/${parts.length}` : ""}${titleEn && !p.heading ? ` <span class="en">· ${esc(clip(titleEn, 50))}</span>` : ""}</p>
+                <h1 class="s-title">${esc(clip(p.heading || a.title, 70))}</h1>
+                <div class="guide-body">${guideBodyHTML(p.lines)}</div>
+              </div>
+              ${url ? `<figure class="guide-photo"><img src="${esc(url)}" alt="" decoding="async">${photo.caption ? `<figcaption>${esc(clip(photo.caption, 60))}</figcaption>` : ""}</figure>` : ""}
+            </div></div>
+            ${qrPage("#/guide", "Le mode d'emploi complet", "Full guide")}
+          </div>`
+        });
+      });
+    });
+    return out.slice(0, 8);
+  }
+
   function buildSlides() {
-    if (!data) return [welcomeSlide()];
+    if (!data) return [Object.assign(welcomeSlide(), { key: "welcome" })];
     const now = new Date();
     const s = [];
+    const add = (key, slide) => s.push(Object.assign(slide, { key }));
     const infos = data.infos.slice(0, 4);
-    infos.filter((a) => a.important).forEach((a) => s.push(infoSlide(a)));
-    data.events.filter((e) => evEnd(e) > now).slice(0, 3).forEach((e) => s.push(eventSlide(e, data.stats[e.id])));
-    infos.filter((a) => !a.important).forEach((a) => s.push(infoSlide(a)));
-    data.polls.filter((p) => !(p.endsAt && new Date(p.endsAt) < now)).slice(0, 2).forEach((p) => s.push(pollSlide(p)));
+    infos.filter((a) => a.important).forEach((a) => add(`info:${a.id}`, infoSlide(a)));
+    data.events.filter((e) => evEnd(e) > now).slice(0, 3).forEach((e) => add(`ev:${e.id}`, eventSlide(e, data.stats[e.id])));
+    infos.filter((a) => !a.important).forEach((a) => add(`info:${a.id}`, infoSlide(a)));
+    data.polls.filter((p) => !(p.endsAt && new Date(p.endsAt) < now)).slice(0, 2).forEach((p) => add(`poll:${p.id}`, pollSlide(p)));
     const ideas = data.ideas.slice(0, 3);
-    if (ideas.length) s.push(ideasSlide(ideas));
+    if (ideas.length) add("ideas", ideasSlide(ideas));
     const ads = data.ads.filter((a) => !a.expiresAt || new Date(a.expiresAt) > now).slice(0, 4);
-    if (ads.length) s.push(adsSlide(ads));
-    s.push(welcomeSlide());
+    if (ads.length) add("ads", adsSlide(ads));
+    guideSlides(data.guide).forEach((g) => s.push(g));
+    add("welcome", welcomeSlide());
     return s;
   }
 
@@ -312,10 +387,12 @@
     dirty = false;
   }
 
-  function go(i) {
+  function go(i, instant) {
     if (stopShown) { stopShown(); stopShown = null; }
     idx = (i + slides.length) % slides.length;
+    if (instant) slidesEl.classList.add("instant"); // mise à jour sur place : pas de fondu
     [...slidesEl.children].forEach((el, k) => { el.classList.toggle("is-on", k === idx); el.setAttribute("aria-hidden", String(k !== idx)); });
+    if (instant) { void slidesEl.offsetWidth; slidesEl.classList.remove("instant"); }
     [...dotsEl.children].forEach((el, k) => el.classList.toggle("is-on", k === idx));
     const s = slides[idx];
     const [emoji, fr, en] = s.chip;
@@ -347,8 +424,36 @@
     timer = setTimeout(next, dur);
   }
 
+  /* ---------------- Veille : luminosité réduite, réveil sur « Bienvenue » ---------------- */
+  const dimEl = $("#tvDim");
+  let lastInput = Date.now(), lastTick = Date.now(), dimmed = false, hiddenAt = 0;
+
+  function setDim(on) {
+    dimmed = on;
+    dimEl.classList.toggle("is-on", on);
+  }
+
+  // TV rallumée (ou page revenue au premier plan) : pleine luminosité, données fraîches, page « Bienvenue »
+  function onWake() {
+    lastInput = lastTick = Date.now(); // évite un second réveil au tic suivant
+    setDim(false);
+    if (dirty) render();
+    go(slides.length - 1); // la page « Bienvenue » est toujours la dernière
+    if (window.Store) refresh();
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") hiddenAt = Date.now();
+    else if (hiddenAt) { hiddenAt = 0; onWake(); }
+  });
+
   /* ---------------- Horloge et compte à rebours ---------------- */
   function tick() {
+    const nowMs = Date.now();
+    // la page ne tourne pas pendant que la TV est en veille : un « trou » dans l'horloge = réveil
+    if (nowMs - lastTick > WAKE_GAP_MS) { lastTick = nowMs; onWake(); return; }
+    lastTick = nowMs;
+    if (!dimmed && nowMs - lastInput > DIM_AFTER_MS) setDim(true);
     const now = new Date();
     $("#tvTime").textContent = fmtTime(now);
     $("#tvDate").textContent = fmtDay(now);
@@ -367,21 +472,33 @@
   }
 
   /* ---------------- Rafraîchissement ---------------- */
-  let refreshT = null;
+  let refreshT = null, lastSig = "";
   async function refresh() {
     clearTimeout(refreshT);
-    const hadData = Boolean(data);
     try { await load(); online = true; } catch (e) { online = false; console.warn("LEONE TV : chargement", e); }
     status();
-    if (data && !hadData) { render(); go(0); } // premier chargement réussi : on quitte l'écran d'attente
-    else if (data) dirty = true;               // sinon : pris en compte à la fin de la boucle
+    const sig = data ? JSON.stringify(data) : "";
+    if (sig && sig !== lastSig) {
+      lastSig = sig;
+      const cur = slides[idx];
+      // nouveautés (événement ajouté, info publiée…) : affichées tout de suite, sur place,
+      // sauf pendant la page « Bienvenue » (prises en compte quand elle se termine)
+      if (!cur || cur.kind === "welcome") dirty = true;
+      else {
+        render();
+        const i = slides.findIndex((s) => s.key === cur.key);
+        go(i >= 0 ? i : Math.min(idx, slides.length - 1), true);
+      }
+    }
     refreshT = setTimeout(refresh, online ? REFRESH_MS : RETRY_MS);
   }
   window.addEventListener("online", () => refresh());
 
   /* ---------------- Écran ---------------- */
   function fit() {
-    const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+    // zone d'affichage réelle (innerWidth peut être faussé par le zoom des WebView de TV)
+    const de = document.documentElement;
+    const s = Math.min((de.clientWidth || window.innerWidth) / W, (de.clientHeight || window.innerHeight) / H);
     stage.style.transform = `translate(-50%, -50%) scale(${s})`;
   }
   window.addEventListener("resize", fit);
@@ -398,6 +515,9 @@
   }, true);
 
   document.addEventListener("keydown", (e) => {
+    lastInput = Date.now();
+    // écran assombri : la première touche rallume seulement, sans changer de diapo
+    if (dimmed) { setDim(false); e.preventDefault(); return; }
     const k = e.key;
     if (k === "ArrowRight" || k === "ArrowDown" || k === "MediaTrackNext" || k === "MediaFastForward") next();
     else if (k === "ArrowLeft" || k === "ArrowUp" || k === "MediaTrackPrevious" || k === "MediaRewind") go(idx - 1);

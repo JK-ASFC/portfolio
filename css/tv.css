@@ -269,6 +269,26 @@ h1, h2, h3, p { margin: 0; }
 .ad h3 { font-size: 34px; font-weight: 700; line-height: 1.15; }
 .ad-body { font-size: 23px; color: var(--muted); margin-top: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
+/* mise à jour des données sur place : pas de fondu */
+.tv-slides.instant .slide { transition: none !important; }
+
+/* ---- Mode d'emploi ---- */
+.tv-panel.guide { display: flex; align-items: flex-start; padding: 44px 52px; max-height: 788px; overflow: hidden; }
+.guide-text { flex: 1; min-width: 0; }
+.guide-eyebrow { font-size: 26px; font-weight: 600; color: #127f74; margin-bottom: 14px; }
+.guide .s-title { font-size: 58px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.guide-body { font-size: 30px; line-height: 1.45; margin-top: 26px; }
+.guide-body p { margin: 0 0 16px; }
+.guide-body ol, .guide-body ul { margin: 0 0 16px; padding-left: 1.4em; }
+.guide-body li { margin-bottom: 10px; }
+.guide-body li::marker { color: var(--t1); font-weight: 700; }
+.guide-body strong { color: var(--ink); }
+.guide-body .callout { border-left: 6px solid var(--t1); background: rgba(25, 181, 165, .1); padding: 12px 20px; border-radius: 0 14px 14px 0; }
+.guide-photo { flex: none; width: 430px; margin: 0 0 0 44px; }
+.guide-photo img { display: block; width: 100%; height: 420px; object-fit: contain; background: #fff; border-radius: 22px; border: 3px solid var(--ink); }
+.guide-photo img.is-broken { display: none; }
+.guide-photo figcaption { font-size: 22px; color: var(--muted); text-align: center; margin-top: 12px; }
+
 /* ---- Bienvenue (3 min, animée) ---- */
 .tv-sun { transition: opacity 1.2s; }
 .tv-stage.is-welcome .tv-sun { opacity: 0; } /* le soleil de la page Bienvenue prend le relais */
@@ -383,6 +403,14 @@ h1, h2, h3, p { margin: 0; }
   background: linear-gradient(90deg, var(--orange), var(--sun));
   transform-origin: left center; transform: scaleX(0);
 }
+
+/* veille : voile noir sur tout l'écran (la page ne peut pas piloter le rétroéclairage de la TV) */
+.tv-dim {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10;
+  background: #000; opacity: 0; pointer-events: none;
+  transition: opacity .6s ease;          /* rallumage rapide */
+}
+.tv-dim.is-on { opacity: .65; transition-duration: 4s; } /* assombrissement en douceur */
 
 /* économie d'énergie / confort : pas d'animations si l'appareil le demande */
 @media (prefers-reduced-motion: reduce) {
