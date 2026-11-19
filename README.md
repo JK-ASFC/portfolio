@@ -203,7 +203,7 @@ pour une TV ou un écran d'accueil. Il tourne tout seul, sans menu ni clic :
   petites annonces ;
 - le **mode d'emploi** : une diapo par partie (`## intertitre`) de chaque article publié
   (3 articles et 8 diapos au plus), avec ses étapes et la photo de la partie ;
-- une page **« Bienvenue » animée de 3 minutes** en fin de boucle : « bienvenue » dans les
+- une page **« Bienvenue » animée de 20 secondes** en fin de boucle : « bienvenue » dans les
   20 langues du site, soleil qui se lève, et les QR codes du groupe **WhatsApp** et du
   compte **Instagram** (`whatsappUrl` et `instagramGroupUrl` dans `js/config.js` ;
   sans eux, le QR code du site les remplace). Durée réglable : `WELCOME_MS` dans `js/tv.js`.

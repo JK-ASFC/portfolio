@@ -289,7 +289,7 @@ h1, h2, h3, p { margin: 0; }
 .guide-photo img.is-broken { display: none; }
 .guide-photo figcaption { font-size: 22px; color: var(--muted); text-align: center; margin-top: 12px; }
 
-/* ---- Bienvenue (3 min, animée) ---- */
+/* ---- Bienvenue (20 s, animée) ---- */
 .tv-sun { transition: opacity 1.2s; }
 .tv-stage.is-welcome .tv-sun { opacity: 0; } /* le soleil de la page Bienvenue prend le relais */
 .s-welcome {
@@ -307,7 +307,7 @@ h1, h2, h3, p { margin: 0; }
   85% { opacity: .32; }
   100% { transform: translateY(-1320px) rotate(14deg); opacity: 0; }
 }
-/* grand soleil qui se lève lentement pendant les 3 minutes */
+/* grand soleil qui se lève pendant les 20 secondes */
 .w-sun {
   position: absolute; left: 50%; top: 10px; margin-left: -330px;
   width: 660px; height: 660px; border-radius: 50%; overflow: hidden;
@@ -319,7 +319,7 @@ h1, h2, h3, p { margin: 0; }
 .w-sun i:nth-child(1) { top: 52%; height: 2.5%; } .w-sun i:nth-child(2) { top: 61%; height: 4%; }
 .w-sun i:nth-child(3) { top: 70%; height: 5.5%; } .w-sun i:nth-child(4) { top: 80%; height: 7%; }
 .w-sun i:nth-child(5) { top: 91%; height: 9%; }
-.slide.is-on .w-sun { animation: w-sunrise 180s linear both, w-glow 5s ease-in-out infinite alternate; }
+.slide.is-on .w-sun { animation: w-sunrise 20s ease-out both, w-glow 5s ease-in-out infinite alternate; }
 @keyframes w-sunrise { from { transform: translateY(150px); } to { transform: translateY(-30px); } }
 @keyframes w-glow { from { opacity: .26; } to { opacity: .42; } }
 

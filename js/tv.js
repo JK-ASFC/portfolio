@@ -2,15 +2,15 @@
    LEONE — mode TV : carrousel d'infos pour l'écran de la salle commune
    Page tv.html (aussi accessible par #/tv). Affiche en boucle, sans clic :
    infos, prochains événements, sondages, idées, petites annonces,
-   puis une page « Bienvenue » animée de 3 minutes (QR WhatsApp + Instagram).
+   puis une page « Bienvenue » animée de 20 secondes (QR WhatsApp + Instagram).
    Uniquement des données déjà publiques sur le site, jamais de prénoms.
    Télécommande / clavier : ◀ ▶ diapo précédente / suivante, OK ou Espace = pause.
    ============================================================= */
 (function () {
   "use strict";
   const W = 1920, H = 1080;
-  const WELCOME_MS = 3 * 60e3;   // durée de la page « Bienvenue »
-  const GREET_MS = 4000;         // un « bienvenue » dans une nouvelle langue toutes les 4 s
+  const WELCOME_MS = 20e3;       // durée de la page « Bienvenue »
+  const GREET_MS = 2500;         // un « bienvenue » dans une nouvelle langue toutes les 2,5 s
   const REFRESH_MS = 5 * 60e3;   // données rechargées toutes les 5 min
   const RETRY_MS = 60e3;         // nouvel essai après une coupure réseau
   const RELOAD_MS = 6 * 3600e3;  // page rechargée toutes les 6 h (mises à jour du site)
@@ -37,6 +37,7 @@
     ["Chào mừng", "Tiếng Việt"], ["Selamat datang", "Bahasa Melayu"], ["欢迎", "中文"], ["ようこそ", "日本語"],
     ["환영합니다", "한국어"], ["Boyei malamu", "Lingála"], ["Byenvini", "Kréyòl Gwadloup · Matinik"]
   ];
+  let greetIdx = 0; // langue affichée par la page « Bienvenue »
   const FLOATERS = ["🎉", "🍕", "🎶", "⚽", "🥳", "☀️", "💬", "🎲", "🍰", "🌴", "🎈", "✨", "🍹", "📣"];
   const ICON_WA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.4a.5.5 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>';
   const ICON_IG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4ZM17.3 5.5a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4ZM16.5 2h-9A5.5 5.5 0 0 0 2 7.5v9A5.5 5.5 0 0 0 7.5 22h9a5.5 5.5 0 0 0 5.5-5.5v-9A5.5 5.5 0 0 0 16.5 2Zm3.7 14.5a3.7 3.7 0 0 1-3.7 3.7h-9a3.7 3.7 0 0 1-3.7-3.7v-9a3.7 3.7 0 0 1 3.7-3.7h9a3.7 3.7 0 0 1 3.7 3.7Z"/></svg>';
@@ -226,7 +227,7 @@
     };
   }
 
-  /* ---- Page « Bienvenue » : 3 min, animée ---- */
+  /* ---- Page « Bienvenue » : 20 s, animée ---- */
   function socialCard(kind, url) {
     const wa = kind === "wa";
     return `<div class="social-card ${wa ? "is-wa" : "is-ig"}">
@@ -268,7 +269,7 @@
       // un « bienvenue » dans chaque langue du site, à tour de rôle
       onShow(el) {
         const greet = $("[data-greet]", el), lang = $("[data-lang]", el), box = greet.parentNode;
-        let i = 0, swapT = null;
+        let swapT = null; // la rotation reprend là où elle s'était arrêtée (greetIdx)
         const fit = () => {
           greet.style.fontSize = "";
           const max = box.clientWidth, w = greet.scrollWidth;
@@ -283,11 +284,11 @@
           void box.offsetWidth; // relance l'animation d'entrée
           box.classList.add("is-in");
         };
-        show(0);
+        show(greetIdx);
         const iv = setInterval(() => {
           box.classList.remove("is-in");
           box.classList.add("is-out");
-          swapT = setTimeout(() => { i = (i + 1) % GREETINGS.length; show(i); }, 450);
+          swapT = setTimeout(() => { greetIdx = (greetIdx + 1) % GREETINGS.length; show(greetIdx); }, 450);
         }, GREET_MS);
         return () => { clearInterval(iv); clearTimeout(swapT); };
       }
