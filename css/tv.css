@@ -1,0 +1,393 @@
+/* =============================================================
+   LEONE — mode TV (tv.html) : scène fixe 1920×1080 mise à l'échelle
+   de l'écran. Animations limitées à opacity / transform (fluide même
+   sur le processeur modeste d'une TV).
+   ============================================================= */
+:root {
+  --ink: #14123a;
+  --ink-2: #221f5c;
+  --cream: #f6eedc;
+  --paper: #fffaf0;
+  --orange: #ff5a1f;
+  --sun: #ffc93c;
+  --pink: #ff4f8b;
+  --teal: #19b5a5;
+  --violet: #7b5cff;
+  --blue-fr: #1d3fbb;
+  --red-fr: #e63946;
+  --green: #2f9e5b;
+  --muted: #5d5a7d;
+  --line: rgba(20, 18, 58, .14);
+  --f-display: "Audiowide", "Trebuchet MS", sans-serif;
+  --f-body: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "Space Mono", ui-monospace, monospace;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0a24; }
+body.tv {
+  font-family: var(--f-body);
+  color: var(--cream);
+  cursor: none;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+h1, h2, h3, p { margin: 0; }
+.en { opacity: .62; font-weight: 400; }
+
+/* ---------------- Scène ---------------- */
+.tv-stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1920px; height: 1080px;
+  transform-origin: 50% 50%;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 650px at 80% 105%, rgba(255, 79, 139, .30), transparent 62%),
+    linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 62%, #33205e 100%);
+}
+.tv-sky { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; }
+.tv-stars {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 70% 20%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 40% 70%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 85% 55%, #fff 50%, transparent 51%),
+    radial-gradient(2.5px 2.5px at 60% 40%, #ffe9a8 50%, transparent 51%);
+  background-size: 420px 420px;
+  opacity: .45;
+  animation: tv-twinkle 7s ease-in-out infinite alternate;
+}
+@keyframes tv-twinkle { to { opacity: .18; } }
+.tv-sun {
+  position: absolute; right: 120px; bottom: 210px;
+  width: 560px; height: 560px; border-radius: 50%;
+  background: linear-gradient(180deg, var(--sun) 10%, var(--orange) 55%, var(--pink) 95%);
+  box-shadow: 0 0 160px rgba(255, 90, 31, .45);
+  overflow: hidden; opacity: .28;
+}
+.tv-sun i { position: absolute; left: 0; right: 0; background: var(--ink-2); }
+.tv-sun i:nth-child(1) { top: 52%; height: 2.5%; } .tv-sun i:nth-child(2) { top: 61%; height: 4%; }
+.tv-sun i:nth-child(3) { top: 70%; height: 5.5%; } .tv-sun i:nth-child(4) { top: 80%; height: 7%; }
+.tv-sun i:nth-child(5) { top: 91%; height: 9%; }
+.tv-floor {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 300px;
+  overflow: hidden; opacity: .45;
+  perspective: 420px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 45%);
+  mask-image: linear-gradient(to bottom, transparent, #000 45%);
+}
+.tv-grid {
+  position: absolute; left: -60%; right: -60%; top: 0; height: 900px;
+  background-image:
+    linear-gradient(rgba(255, 79, 139, .7) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255, 79, 139, .7) 2px, transparent 2px);
+  background-size: 90px 90px;
+  transform-origin: top center;
+  transform: rotateX(62deg) translateY(-90px);
+  animation: tv-floor 3.2s linear infinite;
+}
+@keyframes tv-floor { to { transform: rotateX(62deg) translateY(0); } }
+
+/* ---------------- Bandeau du haut ---------------- */
+.tv-top {
+  position: absolute; top: 36px; left: 80px; right: 80px; height: 96px;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 3;
+}
+.tv-logo { display: flex; align-items: center; }
+.tv-logo-sun {
+  width: 62px; height: 62px; border-radius: 50%; margin-right: 20px;
+  background: linear-gradient(180deg, var(--sun), var(--orange) 70%);
+  border: 3px solid var(--cream);
+  position: relative; overflow: hidden;
+}
+.tv-logo-sun::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 55%; height: 100%;
+  background: repeating-linear-gradient(180deg, var(--ink) 0 4px, transparent 4px 9px);
+}
+.tv-logo-word { font-family: var(--f-display); font-size: 54px; letter-spacing: .06em; }
+.tv-chip {
+  font-size: 32px; font-weight: 600;
+  padding: 12px 34px; border-radius: 999px;
+  background: rgba(255, 250, 240, .1);
+  border: 2px solid rgba(255, 250, 240, .25);
+  white-space: nowrap;
+}
+.tv-chip:empty { display: none; }
+.chip-emoji { margin-right: 4px; }
+.tv-clock { text-align: right; line-height: 1; }
+.tv-clock strong { display: block; font-family: var(--f-display); font-weight: 400; font-size: 66px; }
+.tv-clock span { display: block; font-size: 26px; opacity: .75; margin-top: 8px; }
+
+/* ---------------- Diapositives ---------------- */
+.tv-slides { position: absolute; top: 168px; left: 80px; right: 80px; bottom: 124px; z-index: 2; }
+.slide {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  opacity: 0; transform: translateY(36px); visibility: hidden;
+  transition: opacity .8s var(--ease), transform .8s var(--ease), visibility 0s linear .8s;
+}
+.slide.is-on { opacity: 1; transform: none; visibility: visible; transition-delay: 0s; }
+
+/* couleurs par thème (mêmes que le site) */
+.th-sunset    { --t1: var(--orange); --t2: var(--sun); }
+.th-tricolore { --t1: var(--blue-fr); --t2: var(--red-fr); }
+.th-ocean     { --t1: var(--teal); --t2: var(--violet); }
+.th-neon      { --t1: var(--pink); --t2: var(--violet); }
+.th-forest    { --t1: var(--green); --t2: #c8e66b; }
+.th-alert     { --t1: var(--orange); --t2: var(--red-fr); }
+
+.s-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; grid-gap: 64px; height: 100%; align-items: center; }
+.s-main { min-width: 0; }
+
+.eyebrow { display: flex; align-items: center; font-size: 30px; margin-bottom: 20px; }
+.pill {
+  display: inline-block; padding: 8px 24px; border-radius: 999px;
+  background: var(--sun); color: var(--ink); font-weight: 700;
+}
+.pill .en { opacity: .7; }
+.pill-live { background: var(--orange); color: #fff; animation: tv-pulse 1.6s ease-in-out infinite; }
+@keyframes tv-pulse { 50% { opacity: .72; } }
+.pill-ok { background: var(--teal); color: #fff; font-family: var(--f-body); font-size: 22px; vertical-align: middle; padding: 4px 16px; }
+.cat { margin-left: 18px; opacity: .75; }
+
+.s-title { font-family: var(--f-display); font-weight: 400; font-size: 88px; line-height: 1.06; letter-spacing: .01em; overflow-wrap: anywhere; }
+.s-sub { font-size: 36px; opacity: .65; margin-top: 10px; }
+
+/* carte crème façon site, ombre décalée de la couleur du thème */
+.tv-panel {
+  background: var(--paper); color: var(--ink);
+  border: 3px solid var(--ink); border-radius: 32px;
+  box-shadow: 10px 10px 0 var(--t1, var(--orange));
+  padding: 30px 40px;
+}
+.tv-panel .en { color: var(--muted); opacity: 1; }
+.bar { display: block; height: 12px; border-radius: 99px; background: rgba(20, 18, 58, .12); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--t1, var(--orange)), var(--t2, var(--sun))); }
+
+/* ---- QR code ---- */
+.qr-card {
+  background: var(--paper); color: var(--ink);
+  border: 3px solid var(--ink); border-radius: 36px;
+  box-shadow: 10px 10px 0 var(--t1, var(--orange));
+  padding: 26px 26px 24px; text-align: center;
+}
+.qr svg { display: block; width: 100%; height: auto; border-radius: 14px; }
+.qr-fr { font-size: 30px; font-weight: 700; line-height: 1.2; margin-top: 16px; }
+.qr-en { font-size: 24px; color: var(--muted); margin-top: 4px; }
+.qr-url { font-family: var(--f-mono); font-size: 19px; color: var(--muted); margin-top: 10px; overflow-wrap: anywhere; }
+
+/* ---- Événement ---- */
+.ev-head { display: flex; align-items: center; margin-bottom: 24px; }
+.ev-emoji {
+  flex: none; width: 140px; height: 140px; margin-right: 34px;
+  border-radius: 36px; display: flex; align-items: center; justify-content: center;
+  font-size: 82px; line-height: 1;
+  background: linear-gradient(135deg, var(--t1), var(--t2));
+  border: 3px solid var(--cream);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, .35);
+}
+.th-tricolore .ev-emoji { background: linear-gradient(90deg, var(--blue-fr) 0 33.3%, #f4f1ea 33.3% 66.6%, var(--red-fr) 66.6%); }
+.ev-titles { min-width: 0; }
+/* titre : 2 lignes maximum, plus petit s'il est long */
+.ev-titles .s-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.s-title.t-m { font-size: 72px; }
+.s-title.t-l { font-size: 60px; }
+.ev-titles .s-sub { font-size: 30px; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.facts { display: flex; flex-wrap: wrap; margin: 0 0 14px -12px; }
+.fact {
+  font-size: 27px; margin: 0 0 12px 12px; padding: 8px 22px; border-radius: 999px;
+  background: rgba(255, 250, 240, .12); border: 2px solid rgba(255, 250, 240, .22);
+  white-space: nowrap;
+}
+.ev-row { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-gap: 32px; align-items: stretch; }
+.countdown { display: flex; align-items: center; padding: 24px 26px; }
+.countdown div { text-align: center; min-width: 104px; padding: 16px 8px 12px; border-radius: 18px; background: rgba(20, 18, 58, .07); }
+.countdown div + div { margin-left: 14px; }
+.countdown strong { display: block; font-family: var(--f-display); font-weight: 400; font-size: 66px; line-height: 1; }
+.countdown span { display: block; font-size: 20px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; margin-top: 8px; }
+.live-now { display: flex; flex-direction: column; justify-content: center; }
+.live-now strong { font-family: var(--f-display); font-weight: 400; font-size: 54px; }
+.live-now .en { font-size: 28px; margin-top: 6px; }
+.tv-panel.needs { padding: 24px 34px; }
+.needs h3 { font-size: 26px; font-weight: 700; margin-bottom: 12px; }
+.need {
+  display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; grid-template-rows: auto auto;
+  grid-column-gap: 16px; align-items: center; font-size: 27px; margin-bottom: 10px;
+}
+.need:last-child { margin-bottom: 0; }
+.need-emoji { grid-row: 1 / 3; font-size: 34px; text-align: center; }
+.need-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.need-count { font-family: var(--f-mono); font-weight: 700; }
+.need .bar { grid-column: 2 / 4; margin-top: 6px; }
+.all-set { font-size: 32px; font-weight: 700; }
+.desc p { font-size: 30px; line-height: 1.45; }
+
+/* ---- Info ---- */
+.tv-panel.info { padding: 56px 64px; }
+.info .s-title { font-size: 70px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.info .s-sub { color: var(--muted); opacity: 1; }
+.s-body {
+  font-size: 36px; line-height: 1.45; margin-top: 30px; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden;
+}
+.s-body.en { font-size: 28px; margin-top: 22px; -webkit-line-clamp: 3; }
+.info.is-important { border-color: var(--orange); border-width: 5px; }
+.info.is-important .s-title { color: #c6370a; }
+
+/* ---- Sondage ---- */
+.tv-panel.poll { padding: 48px 58px; }
+.poll .s-title { font-size: 60px; }
+.poll .s-sub { color: var(--muted); opacity: 1; font-size: 32px; }
+.poll-opts { list-style: none; margin: 34px 0 0; padding: 0; }
+.poll-opts li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-row-gap: 8px; font-size: 32px; margin-bottom: 18px; }
+.poll-opts .bar { grid-column: 1 / 3; height: 18px; }
+.po-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.po-pct { font-family: var(--f-mono); font-weight: 700; margin-left: 20px; }
+.poll-opts .is-lead .po-label { font-weight: 700; }
+.poll-meta { font-size: 26px; color: var(--muted); margin-top: 26px; }
+
+/* ---- Idées ---- */
+.idea { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; grid-column-gap: 30px; align-items: center; padding: 28px 38px; margin-bottom: 28px; }
+.idea:last-child { margin-bottom: 0; }
+.idea-rank { font-family: var(--f-display); font-size: 70px; color: var(--t1); text-align: center; }
+.idea h3 { font-size: 40px; font-weight: 700; line-height: 1.15; }
+.idea p { font-size: 26px; color: var(--muted); margin-top: 8px; }
+.idea-votes { font-family: var(--f-mono); font-size: 34px; font-weight: 700; white-space: nowrap; }
+.idea-votes span { margin-left: 24px; }
+
+/* ---- Petites annonces ---- */
+.ads { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 30px; }
+.ad { display: flex; align-items: center; padding: 24px; min-height: 230px; }
+.ad-img, .ad-emoji { flex: none; width: 160px; height: 160px; border-radius: 22px; margin-right: 26px; }
+.ad-img { object-fit: cover; border: 3px solid var(--ink); }
+.ad-img.is-broken { display: none; }
+.ad-emoji { display: flex; align-items: center; justify-content: center; font-size: 84px; background: linear-gradient(135deg, var(--t1), var(--t2)); }
+.ad-text { min-width: 0; }
+.ad-kind { font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #1f7a45; margin-bottom: 6px; }
+.ad h3 { font-size: 34px; font-weight: 700; line-height: 1.15; }
+.ad-body { font-size: 23px; color: var(--muted); margin-top: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ---- Bienvenue (3 min, animée) ---- */
+.tv-sun { transition: opacity 1.2s; }
+.tv-stage.is-welcome .tv-sun { opacity: 0; } /* le soleil de la page Bienvenue prend le relais */
+.s-welcome {
+  position: relative; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+}
+/* emojis qui montent doucement sur tout l'écran (animés seulement quand la page est affichée) */
+.w-floaters { position: absolute; left: -80px; right: -80px; top: -168px; bottom: -124px; overflow: hidden; pointer-events: none; }
+.w-floaters span { position: absolute; bottom: -120px; font-size: 64px; line-height: 1; opacity: 0; }
+.slide.is-on .w-floaters span { animation: w-float 20s linear infinite; }
+@keyframes w-float {
+  0% { transform: translateY(0) rotate(-10deg); opacity: 0; }
+  10% { opacity: .32; }
+  85% { opacity: .32; }
+  100% { transform: translateY(-1320px) rotate(14deg); opacity: 0; }
+}
+/* grand soleil qui se lève lentement pendant les 3 minutes */
+.w-sun {
+  position: absolute; left: 50%; top: 10px; margin-left: -330px;
+  width: 660px; height: 660px; border-radius: 50%; overflow: hidden;
+  background: linear-gradient(180deg, var(--sun) 10%, var(--orange) 55%, var(--pink) 95%);
+  box-shadow: 0 0 220px rgba(255, 90, 31, .5);
+  opacity: .3; transform: translateY(150px);
+}
+.w-sun i { position: absolute; left: 0; right: 0; background: var(--ink-2); }
+.w-sun i:nth-child(1) { top: 52%; height: 2.5%; } .w-sun i:nth-child(2) { top: 61%; height: 4%; }
+.w-sun i:nth-child(3) { top: 70%; height: 5.5%; } .w-sun i:nth-child(4) { top: 80%; height: 7%; }
+.w-sun i:nth-child(5) { top: 91%; height: 9%; }
+.slide.is-on .w-sun { animation: w-sunrise 180s linear both, w-glow 5s ease-in-out infinite alternate; }
+@keyframes w-sunrise { from { transform: translateY(150px); } to { transform: translateY(-30px); } }
+@keyframes w-glow { from { opacity: .26; } to { opacity: .42; } }
+
+/* « Bienvenue » dans les 20 langues du site, à tour de rôle */
+.w-greet-box { position: relative; width: 100%; height: 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.w-greet {
+  max-width: 100%; padding: 0 24px;
+  font-family: var(--f-display); font-weight: 400; font-size: 168px; line-height: 1.12; white-space: nowrap;
+  color: var(--sun);
+  background: linear-gradient(180deg, #fff3c4 0%, var(--sun) 35%, var(--orange) 75%, var(--pink));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.w-lang { font-family: var(--f-mono); font-size: 28px; letter-spacing: .14em; text-transform: uppercase; opacity: .7; margin-top: 2px; }
+.w-greet, .w-lang { transition: opacity .4s, transform .4s; }
+.w-greet-box.is-out .w-greet, .w-greet-box.is-out .w-lang { opacity: 0; transform: translateY(-36px) scale(.98); }
+.w-greet-box.is-in .w-greet { animation: w-in .7s var(--ease) both; }
+.w-greet-box.is-in .w-lang { animation: w-in .7s .12s var(--ease) both; }
+@keyframes w-in { from { opacity: 0; transform: translateY(46px) scale(.96); } }
+
+.w-tag { position: relative; font-size: 40px; margin-top: 6px; }
+.w-tag strong { font-family: var(--f-display); font-weight: 400; letter-spacing: .04em; }
+.w-tag .en { font-size: 30px; }
+
+.w-row { position: relative; display: flex; align-items: center; justify-content: center; margin-top: 30px; }
+.social-card {
+  position: relative; width: 340px;
+  background: var(--paper); color: var(--ink);
+  border: 3px solid var(--ink); border-radius: 36px;
+  padding: 20px 24px 22px; text-align: center;
+}
+.social-card.is-wa { box-shadow: 12px 12px 0 #25d366; }
+.social-card.is-ig { box-shadow: 12px 12px 0 #d62976; }
+/* onde qui attire l'œil autour des QR codes (le QR lui-même reste immobile) */
+.social-card::before {
+  content: ""; position: absolute; top: -16px; left: -16px; right: -16px; bottom: -16px;
+  border-radius: 48px; border: 4px solid #25d366; opacity: 0;
+}
+.social-card.is-ig::before { border-color: #d62976; }
+.slide.is-on .social-card::before { animation: w-ring 3s ease-out infinite; }
+.slide.is-on .social-card.is-ig::before { animation-delay: 1.5s; }
+@keyframes w-ring { 0% { opacity: .75; transform: scale(.97); } 100% { opacity: 0; transform: scale(1.1); } }
+.social-head { display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; margin-bottom: 12px; }
+.social-ico { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 14px; margin-right: 12px; color: #fff; }
+.social-ico svg { width: 32px; height: 32px; }
+.is-wa .social-ico { background: #25d366; }
+.is-ig .social-ico { background: linear-gradient(45deg, #feda75, #fa7e1e 25%, #d62976 50%, #962fbf 75%, #4f5bd5); }
+.social-card .qr svg { width: 250px; margin: 0 auto; }
+.social-card .qr-fr { font-size: 27px; margin-top: 12px; }
+.social-card .qr-en { font-size: 22px; }
+
+.w-join { width: 500px; margin: 0 56px; }
+.w-phone { display: inline-block; font-size: 104px; line-height: 1; }
+.slide.is-on .w-phone { animation: w-bob 2.4s ease-in-out infinite; }
+@keyframes w-bob { 50% { transform: translateY(-18px) rotate(-6deg); } }
+.w-join-fr { font-family: var(--f-display); font-size: 62px; line-height: 1.1; margin-top: 16px; }
+.w-join-en { font-size: 34px; opacity: .7; margin-top: 6px; }
+.w-join-hint { font-size: 26px; opacity: .85; margin-top: 22px; }
+.w-join-hint.en { font-size: 22px; opacity: .6; margin-top: 4px; }
+.w-site { font-family: var(--f-mono); font-size: 22px; opacity: .65; margin-top: 22px; }
+.w-site-qr svg { width: 250px; margin: 18px auto 0; border-radius: 14px; }
+
+/* ---------------- Bas d'écran ---------------- */
+.tv-bottom {
+  position: absolute; left: 80px; right: 80px; bottom: 36px; height: 52px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 24px; z-index: 3;
+}
+.tv-dots { display: flex; align-items: center; min-width: 200px; }
+.tv-dots i {
+  display: block; width: 14px; height: 14px; margin-right: 12px; border-radius: 99px;
+  background: rgba(255, 250, 240, .3);
+  transition: width .4s var(--ease), background-color .4s;
+}
+.tv-dots i.is-on { width: 46px; background: var(--sun); }
+.tv-status { font-weight: 600; }
+.tv-status.is-warn { color: var(--sun); }
+.tv-url { font-family: var(--f-mono); opacity: .7; }
+.tv-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: rgba(255, 250, 240, .08); z-index: 3; }
+.tv-progress i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--orange), var(--sun));
+  transform-origin: left center; transform: scaleX(0);
+}
+
+/* économie d'énergie / confort : pas d'animations si l'appareil le demande */
+@media (prefers-reduced-motion: reduce) {
+  .tv-stars, .tv-grid, .pill-live, .slide.is-on .w-floaters span, .slide.is-on .w-sun,
+  .slide.is-on .w-phone, .slide.is-on .social-card::before { animation: none; }
+  .w-floaters { display: none; }
+  .slide { transition: opacity .4s linear, visibility 0s linear .4s; transform: none; }
+}

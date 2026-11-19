@@ -11,6 +11,7 @@ js/i18n.js        traductions FR / EN
 js/config.js      configuration (Supabase)
 js/store.js       données : Supabase, ou mode démo (localStorage)
 js/app.js         rendu, formulaires, modération
+tv.html           écran TV de la salle commune (carrousel d'infos) : js/tv.js, css/tv.css, js/qr.js
 supabase.sql      schéma, sécurité (RLS + fonctions) et événement d'exemple
 ```
 
@@ -192,6 +193,28 @@ Ensuite, le **Tableau de bord** permet d'envoyer une notification (titre, texte,
 - la participation par événement (graphique et tableau) ;
 - les idées les plus aimées, le pot, les articles en rupture, les sondages ouverts ;
 - l'envoi de notifications.
+
+## Écran TV (salle commune)
+
+`https://<utilisateur>.github.io/portfolio/tv.html` (ou `#/tv`) : un carrousel plein écran
+pour une TV ou un écran d'accueil. Il tourne tout seul, sans menu ni clic :
+- prochains événements (3 max) : date, lieu, participants, compte à rebours, ce qu'il manque ;
+- infos en cours (les importantes passent en premier), sondages ouverts, idées les plus aimées,
+  petites annonces ;
+- une page **« Bienvenue » animée de 3 minutes** en fin de boucle : « bienvenue » dans les
+  20 langues du site, soleil qui se lève, et les QR codes du groupe **WhatsApp** et du
+  compte **Instagram** (`whatsappUrl` et `instagramGroupUrl` dans `js/config.js` ;
+  sans eux, le QR code du site les remplace). Durée réglable : `WELCOME_MS` dans `js/tv.js`.
+
+Chaque diapo a un **QR code** vers la bonne page (répondre, voter, participer au pot…).
+Textes en français avec l'anglais en dessous. Uniquement des données déjà publiques,
+**jamais de prénoms** (ni participants, ni auteurs d'annonces, ni contacts).
+
+- Scène 1920×1080 mise à l'échelle de n'importe quel écran ; animations légères.
+- Données rechargées toutes les 5 minutes, page rechargée toutes les 6 h ; hors connexion,
+  la dernière version reste affichée.
+- Télécommande : ◀ ▶ diapo précédente / suivante, **OK** = pause.
+- QR codes générés sur place par `js/qr.js` (aucun service externe).
 
 ## Confidentialité, RGPD et mentions légales
 

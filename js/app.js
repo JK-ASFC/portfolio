@@ -1202,6 +1202,7 @@
     let parts;
     try { parts = h.replace(/^#\/?/, "").split("/").map(decodeURIComponent); } catch (e) { parts = []; }
     const [name = "", sub, id] = parts;
+    if (name === "tv") { location.replace("tv.html"); return; } // écran TV de la salle commune
     const openIdea = name === "propose"; // ancien lien « Proposer » : accueil + formulaire ouvert
     const v = ["event", "admin", "pot", "infos", "inventory", "guide", "ads", "gallery", "report", "polls", "app", "legal"].includes(name) ? name : "home";
     setMore(false);

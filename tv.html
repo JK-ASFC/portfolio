@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>LEONE · TV</title>
+  <meta name="theme-color" content="#14123a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23ffd23f'/><stop offset='1' stop-color='%23ff4f1f'/></linearGradient></defs><circle cx='32' cy='32' r='30' fill='url(%23g)'/><rect x='0' y='36' width='64' height='4' fill='%2314123a'/><rect x='0' y='46' width='64' height='5' fill='%2314123a'/></svg>">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/tv.css">
+</head>
+<body class="tv">
+  <!-- Écran « carrousel d'infos » pour la TV de la salle commune.
+       Plein écran 1920×1080, mis à l'échelle de l'écran, sans menu ni clic.
+       Télécommande : ◀ ▶ diapo précédente / suivante, OK = pause. -->
+  <div class="tv-stage" id="stage">
+    <div class="tv-sky" aria-hidden="true">
+      <div class="tv-stars"></div>
+      <div class="tv-sun"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="tv-floor"><div class="tv-grid"></div></div>
+    </div>
+
+    <header class="tv-top">
+      <div class="tv-logo"><span class="tv-logo-sun" aria-hidden="true"></span><span class="tv-logo-word">LEONE</span></div>
+      <div class="tv-chip" id="tvChip"></div>
+      <div class="tv-clock"><strong id="tvTime">--:--</strong><span id="tvDate"></span></div>
+    </header>
+
+    <main class="tv-slides" id="slides"></main>
+
+    <footer class="tv-bottom">
+      <div class="tv-dots" id="tvDots"></div>
+      <div class="tv-status" id="tvStatus"></div>
+      <div class="tv-url" id="tvUrl"></div>
+    </footer>
+    <div class="tv-progress" aria-hidden="true"><i id="tvProgress"></i></div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/qr.js"></script>
+  <script src="js/tv.js"></script>
+</body>
+</html>
