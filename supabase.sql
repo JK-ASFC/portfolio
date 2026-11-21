@@ -1114,6 +1114,48 @@ insert into public.events (id, data) values (
   }$json$::jsonb
 ) on conflict (id) do nothing;
 
+-- Deuxième article : la laverie WASHiN (créé une seule fois, modifiable ensuite dans Organiser)
+insert into public.guide_articles (id, emoji, title, title_en, body, body_en, photos, sort)
+values ('3c7d2b9e-41a8-4f0e-8b6a-7a2e5d1c9b02', '🧺', 'Laverie : utiliser WASHiN', 'Laundry: using WASHiN',
+  $w$Les machines de la laverie se paient avec l'application **WASHiN**. L'ordre des étapes compte : suis-les dans cet ordre.
+
+## Les étapes
+1. Connecte-toi à l'application **WASHiN**.
+2. Sélectionne la résidence **Colonies Saint Ouen Village Olympique**.
+3. Choisis ta machine : **lave-linge 2, 4 ou 6**, ou **sèche-linge 1, 3 ou 5**.
+4. Mets ton linge dans le tambour, **sans refermer la porte**.
+5. Si tu as un code de remise, saisis-le **avant** de procéder au paiement dans l'application.
+6. Sélectionne le programme **sur la machine**.
+7. Si tout a fonctionné, l'écran affiche **« payé »** (et non « payez »).
+8. Ferme le tambour, puis appuie sur **Start**.
+9. **En dernière étape seulement**, une fois la machine lancée, appuie sur **« C'est parti »** dans l'application.
+
+> **N'appuie pas sur « C'est parti » avant que la machine ait démarré.**
+
+## Les numéros des machines
+- **Lave-linge** : 2, 4, 6
+- **Sèche-linge** : 1, 3, 5$w$,
+  $w$The laundry machines are paid for with the **WASHiN** app. The order of the steps matters: follow them in this order.
+
+## Steps
+1. Log in to the **WASHiN** app.
+2. Select the residence **Colonies Saint Ouen Village Olympique**.
+3. Choose your machine: **washing machine 2, 4 or 6**, or **dryer 1, 3 or 5**.
+4. Put your laundry in the drum **without closing the door yet**.
+5. If you have a discount code, enter it **before** proceeding with the payment in the app.
+6. Select the programme **on the machine**.
+7. If everything worked, the screen shows **"paid"** (not "please pay").
+8. Close the drum, then press **Start**.
+9. **Only as the last step**, once the machine has started, press **"Got it"** in the app.
+
+> **Don't press "Got it" before the machine has started.**
+
+## Machine numbers
+- **Washing machines**: 2, 4, 6
+- **Dryers**: 1, 3, 5$w$,
+  '[]'::jsonb, 2)
+ on conflict (id) do nothing;
+
 -- -------------------------------------------------------------
 -- Donner les droits organisateur (à faire une fois par organisateur)
 -- 1. Authentication > Users > Add user (email + mot de passe)

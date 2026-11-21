@@ -1,4 +1,4 @@
-/* Article de départ du mode d'emploi (mode démo ; en ligne, il vient de supabase.sql) */
+/* Articles de départ du mode d'emploi (mode démo ; en ligne, il vient de supabase.sql) */
 window.LEONE_GUIDE_SEED = [
  {
   "id": "9e1f0c2a-6b1d-4c55-9a51-0c1e5e0a7a01",
@@ -23,5 +23,18 @@ window.LEONE_GUIDE_SEED = [
   "published": true,
   "createdAt": "2026-11-09T12:00:00Z",
   "updatedAt": "2026-11-09T12:00:00Z"
+ },
+ {
+  "id": "3c7d2b9e-41a8-4f0e-8b6a-7a2e5d1c9b02",
+  "emoji": "🧺",
+  "title": "Laverie : utiliser WASHiN",
+  "title_en": "Laundry: using WASHiN",
+  "body": "Les machines de la laverie se paient avec l'application **WASHiN**. L'ordre des étapes compte : suis-les dans cet ordre.\n\n## Les étapes\n1. Connecte-toi à l'application **WASHiN**.\n2. Sélectionne la résidence **Colonies Saint Ouen Village Olympique**.\n3. Choisis ta machine : **lave-linge 2, 4 ou 6**, ou **sèche-linge 1, 3 ou 5**.\n4. Mets ton linge dans le tambour, **sans refermer la porte**.\n5. Si tu as un code de remise, saisis-le **avant** de procéder au paiement dans l'application.\n6. Sélectionne le programme **sur la machine**.\n7. Si tout a fonctionné, l'écran affiche **« payé »** (et non « payez »).\n8. Ferme le tambour, puis appuie sur **Start**.\n9. **En dernière étape seulement**, une fois la machine lancée, appuie sur **« C'est parti »** dans l'application.\n\n> **N'appuie pas sur « C'est parti » avant que la machine ait démarré.**\n\n## Les numéros des machines\n- **Lave-linge** : 2, 4, 6\n- **Sèche-linge** : 1, 3, 5",
+  "body_en": "The laundry machines are paid for with the **WASHiN** app. The order of the steps matters: follow them in this order.\n\n## Steps\n1. Log in to the **WASHiN** app.\n2. Select the residence **Colonies Saint Ouen Village Olympique**.\n3. Choose your machine: **washing machine 2, 4 or 6**, or **dryer 1, 3 or 5**.\n4. Put your laundry in the drum **without closing the door yet**.\n5. If you have a discount code, enter it **before** proceeding with the payment in the app.\n6. Select the programme **on the machine**.\n7. If everything worked, the screen shows **\"paid\"** (not \"please pay\").\n8. Close the drum, then press **Start**.\n9. **Only as the last step**, once the machine has started, press **\"Got it\"** in the app.\n\n> **Don't press \"Got it\" before the machine has started.**\n\n## Machine numbers\n- **Washing machines**: 2, 4, 6\n- **Dryers**: 1, 3, 5",
+  "photos": [],
+  "sort": 2,
+  "published": true,
+  "createdAt": "2026-11-21T12:00:00Z",
+  "updatedAt": "2026-11-21T12:00:00Z"
  }
 ];
