@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.hi = {
+  "nav.werewolf": "वेयरवुल्फ़",
   "meta.title": "LEONE · कार्यक्रम", "skip": "सामग्री पर जाएँ", "nav.label": "नेविगेशन",
   "nav.events": "कार्यक्रम", "nav.propose": "सुझाव दें", "nav.pot": "साझा कोष", "nav.infos": "सूचनाएँ", "nav.more": "और", "nav.inventory": "सामान सूची", "nav.guide": "उपयोग गाइड",
   "infos.title": "सूचनाएँ", "infos.lead": "आयोजकों की ओर से निवासियों के लिए संदेश।", "infos.none": "अभी कोई सूचना नहीं है।", "infos.important": "महत्वपूर्ण", "infos.seeAll": "सभी सूचनाएँ →", "infos.ok": "समझ गया",

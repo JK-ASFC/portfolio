@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.de = {
+  "nav.werewolf": "Werwolf",
   "meta.title": "LEONE · Veranstaltungen", "skip": "Zum Inhalt springen", "nav.label": "Navigation",
   "nav.events": "Events", "nav.propose": "Vorschlagen", "nav.pot": "Gemeinschaftskasse", "nav.infos": "Infos", "nav.more": "Mehr", "nav.inventory": "Inventar", "nav.guide": "Anleitung",
   "infos.title": "Infos", "infos.lead": "Nachrichten der Organisatoren an die Bewohner.", "infos.none": "Im Moment keine Infos.", "infos.important": "Wichtig", "infos.seeAll": "Alle Infos →", "infos.ok": "Verstanden",

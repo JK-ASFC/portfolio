@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.ko = {
+  "nav.werewolf": "늑대인간",
   "meta.title": "LEONE · 이벤트", "skip": "본문으로 건너뛰기", "nav.label": "탐색",
   "nav.events": "이벤트", "nav.propose": "제안", "nav.pot": "공동 기금", "nav.infos": "공지", "nav.more": "더보기", "nav.inventory": "비품 목록", "nav.guide": "이용 안내",
   "infos.title": "공지", "infos.lead": "주최자가 주민에게 보내는 메시지입니다.", "infos.none": "현재 공지가 없습니다.", "infos.important": "중요", "infos.seeAll": "모든 공지 →", "infos.ok": "확인했습니다",

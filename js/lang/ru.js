@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.ru = {
+  "nav.werewolf": "Оборотень",
   "meta.title": "LEONE · События", "skip": "Перейти к содержимому", "nav.label": "Навигация",
   "nav.events": "События", "nav.propose": "Предложить", "nav.pot": "Общая касса", "nav.infos": "Объявления", "nav.more": "Ещё", "nav.inventory": "Инвентарь", "nav.guide": "Инструкция",
   "infos.title": "Объявления", "infos.lead": "Сообщения организаторов для жильцов.", "infos.none": "Пока нет объявлений.", "infos.important": "Важно", "infos.seeAll": "Все объявления →", "infos.ok": "Понятно",

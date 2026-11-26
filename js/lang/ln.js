@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.ln = {
+  "nav.werewolf": "Loup Garou",
   "meta.title": "LEONE · Mayangani", "skip": "Kende na makambo", "nav.label": "Botamboli",
   "nav.events": "Mayangani", "nav.propose": "Pesa likanisi", "nav.pot": "Kesi ya lisanga", "nav.infos": "Nsango", "nav.more": "Mosusu", "nav.inventory": "Biloko", "nav.guide": "Ndenge ya kosalela",
   "infos.title": "Nsango", "infos.lead": "Nsango ya babongisi epai ya bavandi.", "infos.none": "Nsango ezali te sikoyo.", "infos.important": "Ntina mingi", "infos.seeAll": "Nsango nyonso →", "infos.ok": "Nasosoli",

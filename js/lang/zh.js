@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.zh = {
+  "nav.werewolf": "狼人杀",
   "meta.title": "LEONE · 活动", "skip": "跳到内容", "nav.label": "导航",
   "nav.events": "活动", "nav.propose": "提议", "nav.pot": "公共基金", "nav.infos": "通知", "nav.more": "更多", "nav.inventory": "物品清单", "nav.guide": "使用指南",
   "infos.title": "通知", "infos.lead": "组织者发给住户的消息。", "infos.none": "暂无通知。", "infos.important": "重要", "infos.seeAll": "全部通知 →", "infos.ok": "知道了",

@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.es = {
+  "nav.werewolf": "Hombre Lobo",
   "meta.title": "LEONE · Eventos", "skip": "Ir al contenido", "nav.label": "Navegación",
   "nav.events": "Eventos", "nav.propose": "Proponer", "nav.pot": "Bote común", "nav.infos": "Avisos", "nav.more": "Más", "nav.inventory": "Inventario", "nav.guide": "Guía",
   "infos.title": "Avisos", "infos.lead": "Mensajes de los organizadores para los residentes.", "infos.none": "No hay avisos por ahora.", "infos.important": "Importante", "infos.seeAll": "Todos los avisos →", "infos.ok": "Entendido",

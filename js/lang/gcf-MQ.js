@@ -1,6 +1,7 @@
 window.I18N = window.I18N || {};
 /* Kréyòl matinitjé (Martinique) */
 window.I18N["gcf-MQ"] = {
+  "nav.werewolf": "Lougarou",
   "meta.title": "LEONE · Lévènman", "skip": "Alé o kontni", "nav.label": "Navigasyon",
   "nav.events": "Lévènman", "nav.propose": "Pwopozé", "nav.pot": "Kès an komen", "nav.infos": "Nouvèl", "nav.more": "Plis", "nav.inventory": "Envantè", "nav.guide": "Mòd anplwa",
   "infos.title": "Nouvèl", "infos.lead": "Mésaj òwganizatè a pou moun rézidans lan.", "infos.none": "Pa ni nouvèl pou kounyéa.", "infos.important": "Enpòtan", "infos.seeAll": "Tout nouvèl →", "infos.ok": "Man konprann",

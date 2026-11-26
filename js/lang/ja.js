@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.ja = {
+  "nav.werewolf": "人狼ゲーム",
   "meta.title": "LEONE · イベント", "skip": "本文へ移動", "nav.label": "ナビゲーション",
   "nav.events": "イベント", "nav.propose": "提案", "nav.pot": "共同基金", "nav.infos": "お知らせ", "nav.more": "その他", "nav.inventory": "備品リスト", "nav.guide": "利用ガイド",
   "infos.title": "お知らせ", "infos.lead": "主催者から住人へのメッセージです。", "infos.none": "現在お知らせはありません。", "infos.important": "重要", "infos.seeAll": "すべてのお知らせ →", "infos.ok": "わかりました",

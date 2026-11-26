@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.it = {
+  "nav.werewolf": "Lupi Mannari",
   "meta.title": "LEONE · Eventi", "skip": "Vai al contenuto", "nav.label": "Navigazione",
   "nav.events": "Eventi", "nav.propose": "Proponi", "nav.pot": "Cassa comune", "nav.infos": "Avvisi", "nav.more": "Altro", "nav.inventory": "Inventario", "nav.guide": "Guida",
   "infos.title": "Avvisi", "infos.lead": "Messaggi degli organizzatori per i residenti.", "infos.none": "Nessun avviso per ora.", "infos.important": "Importante", "infos.seeAll": "Tutti gli avvisi →", "infos.ok": "Ho capito",

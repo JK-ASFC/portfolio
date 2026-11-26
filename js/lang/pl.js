@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.pl = {
+  "nav.werewolf": "Wilkołak",
   "meta.title": "LEONE · Wydarzenia", "skip": "Przejdź do treści", "nav.label": "Nawigacja",
   "nav.events": "Wydarzenia", "nav.propose": "Zaproponuj", "nav.pot": "Wspólna kasa", "nav.infos": "Ogłoszenia", "nav.more": "Więcej", "nav.inventory": "Inwentarz", "nav.guide": "Instrukcja",
   "infos.title": "Ogłoszenia", "infos.lead": "Wiadomości od organizatorów dla mieszkańców.", "infos.none": "Na razie brak ogłoszeń.", "infos.important": "Ważne", "infos.seeAll": "Wszystkie ogłoszenia →", "infos.ok": "Rozumiem",
