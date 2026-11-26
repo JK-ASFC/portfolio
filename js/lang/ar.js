@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.ar = {
+  "nav.werewolf": "المستذئب",
   "meta.title": "LEONE · الفعاليات", "skip": "انتقل إلى المحتوى", "nav.label": "التنقل",
   "nav.events": "الفعاليات", "nav.propose": "اقترح", "nav.pot": "الصندوق المشترك", "nav.infos": "إعلانات", "nav.more": "المزيد", "nav.inventory": "الجرد", "nav.guide": "دليل الاستخدام",
   "infos.title": "إعلانات", "infos.lead": "رسائل من المنظمين إلى السكان.", "infos.none": "لا توجد إعلانات حاليًا.", "infos.important": "مهم", "infos.seeAll": "كل الإعلانات ←", "infos.ok": "فهمت",

@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.pt = {
+  "nav.werewolf": "Lobisomem",
   "meta.title": "LEONE · Eventos", "skip": "Ir para o conteúdo", "nav.label": "Navegação",
   "nav.events": "Eventos", "nav.propose": "Propor", "nav.pot": "Caixa comum", "nav.infos": "Avisos", "nav.more": "Mais", "nav.inventory": "Inventário", "nav.guide": "Guia",
   "infos.title": "Avisos", "infos.lead": "Mensagens dos organizadores para os residentes.", "infos.none": "Sem avisos por agora.", "infos.important": "Importante", "infos.seeAll": "Todos os avisos →", "infos.ok": "Entendi",

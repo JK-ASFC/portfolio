@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.uk = {
+  "nav.werewolf": "Перевертень",
   "meta.title": "LEONE · Події", "skip": "Перейти до вмісту", "nav.label": "Навігація",
   "nav.events": "Події", "nav.propose": "Запропонувати", "nav.pot": "Спільна каса", "nav.infos": "Оголошення", "nav.more": "Більше", "nav.inventory": "Інвентар", "nav.guide": "Інструкція",
   "infos.title": "Оголошення", "infos.lead": "Повідомлення організаторів для мешканців.", "infos.none": "Поки що оголошень немає.", "infos.important": "Важливо", "infos.seeAll": "Усі оголошення →", "infos.ok": "Зрозуміло",

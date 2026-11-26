@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.ms = {
+  "nav.werewolf": "Serigala Jadian",
   "meta.title": "LEONE · Acara", "skip": "Langkau ke kandungan", "nav.label": "Navigasi",
   "nav.events": "Acara", "nav.propose": "Cadang", "nav.pot": "Tabung bersama", "nav.infos": "Makluman", "nav.more": "Lagi", "nav.inventory": "Inventori", "nav.guide": "Panduan",
   "infos.title": "Makluman", "infos.lead": "Mesej daripada penganjur kepada penghuni.", "infos.none": "Tiada makluman buat masa ini.", "infos.important": "Penting", "infos.seeAll": "Semua makluman →", "infos.ok": "Faham",

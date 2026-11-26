@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.tr = {
+  "nav.werewolf": "Kurt Adam",
   "meta.title": "LEONE · Etkinlikler", "skip": "İçeriğe geç", "nav.label": "Gezinme",
   "nav.events": "Etkinlikler", "nav.propose": "Öner", "nav.pot": "Ortak kasa", "nav.infos": "Duyurular", "nav.more": "Daha fazla", "nav.inventory": "Envanter", "nav.guide": "Kılavuz",
   "infos.title": "Duyurular", "infos.lead": "Organizatörlerden sakinlere mesajlar.", "infos.none": "Şimdilik duyuru yok.", "infos.important": "Önemli", "infos.seeAll": "Tüm duyurular →", "infos.ok": "Anladım",

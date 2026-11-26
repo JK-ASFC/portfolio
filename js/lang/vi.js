@@ -1,5 +1,6 @@
 window.I18N = window.I18N || {};
 window.I18N.vi = {
+  "nav.werewolf": "Ma Sói",
   "meta.title": "LEONE · Sự kiện", "skip": "Đi tới nội dung", "nav.label": "Điều hướng",
   "nav.events": "Sự kiện", "nav.propose": "Đề xuất", "nav.pot": "Quỹ chung", "nav.infos": "Thông báo", "nav.more": "Thêm", "nav.inventory": "Kiểm kê", "nav.guide": "Hướng dẫn",
   "infos.title": "Thông báo", "infos.lead": "Tin nhắn của ban tổ chức gửi cư dân.", "infos.none": "Hiện chưa có thông báo.", "infos.important": "Quan trọng", "infos.seeAll": "Tất cả thông báo →", "infos.ok": "Đã hiểu",
